@@ -316,6 +316,18 @@ def main():
         cfcolo_list = ["HKG", "SJC", "LAX", "SEA" , "NRT", "SIN", "FRA"]
         cf_ports = [443, 2053, 2083, 2087, 2096, 8443]
 
+        # 处理命令行参数
+        if len(sys.argv) > 1:
+            input_regions = sys.argv[1].upper().split(',')
+            valid_regions = [r for r in input_regions if r in colo_emojis]
+            if valid_regions:
+                cfcolo_list = valid_regions
+                logging.info(f"自定义运行区域: {cfcolo_list}")
+            else:
+                logging.warning(f"无效区域参数，使用默认列表: {cfcolo_list}")
+        else:
+            logging.info(f"使用默认区域列表: {cfcolo_list}")
+
         for cfcolo in cfcolo_list:
             random_port = random.choice(cf_ports)
             execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode)
