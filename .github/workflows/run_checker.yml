@@ -1,0 +1,61 @@
+name: Run checker
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"  # 每15分钟执行一次
+  workflow_dispatch:
+
+jobs:
+  run-checkers:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install telethon python-dotenv pathlib2
+
+      - name: Set up environment variables
+        run: |
+          touch .env
+          echo "API_ID=${{ secrets.API_ID }}" >> .env
+          echo "API_HASH=${{ secrets.API_HASH }}" >> .env
+          echo "SESSION_NAME=${{ secrets.SESSION_NAME }}" >> .env
+
+      - name: Run tcip checker
+        run: python checker.py cfip/tcip.txt
+
+      - name: Run ip checker
+        run: python checker.py cfip/ip.txt
+
+      - name: Run fd checker
+        run: python checker.py cfip/fd.txt
+
+      - name: Run cfip checker
+        run: python checker.py cfip/cfip.txt
+
+      - name: Run speed/ip checker
+        run: python checker.py speed/ip.txt
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No changes to commit."
+          else
+            git add .
+            git commit -m "cfst: Auto-update on $(date +'%Y-%m-%d %H:%M:%S')"
+            git push origin main
+          fi
