@@ -263,7 +263,7 @@ def is_running_in_github_actions():
 
 def main():
     """主函数"""
-    try:
+    try:    
         # 删除旧的日志文件
         old_logs = glob.glob('logs/cfstfd_*.log')
         for old_log in old_logs:
@@ -316,6 +316,18 @@ def main():
 
         cfcolo_list = ["HKG", "SJC", "LAX", "SEA" , "NRT", "SIN", "FRA"]
         cf_ports = [443]
+
+        # 处理命令行参数
+        if len(sys.argv) > 1:
+            input_regions = sys.argv[1].upper().split(',')
+            valid_regions = [r for r in input_regions if r in colo_emojis]
+            if valid_regions:
+                cfcolo_list = valid_regions
+                logging.info(f"自定义运行区域: {cfcolo_list}")
+            else:
+                logging.warning(f"无效区域参数，使用默认列表: {cfcolo_list}")
+        else:
+            logging.info(f"使用默认区域列表: {cfcolo_list}")
 
         for cfcolo in cfcolo_list:
             random_port = random.choice(cf_ports)
