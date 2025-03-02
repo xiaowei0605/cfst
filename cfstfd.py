@@ -166,14 +166,15 @@ def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_tx
     emoji_data = colo_emojis.get(cfcolo, ['🌐', cfcolo])
     emoji_flag = emoji_data[0]
     country_code = emoji_data[1]
+    identifier = f"{emoji_flag}{country_code}"
 
     # 添加彩色处理状态提示
     print(f"\n{COLOR_BOLD}{COLOR_CYAN}🔍 正在处理 [{emoji_flag} {cfcolo}] 的测试结果...{COLOR_RESET}")
 
-    # 删除 {cfcolo}-FD.csv 文件
-    csv_folder = "csv/fd"
-    file_to_delete = os.path.join(csv_folder, f"{cfcolo}-FD.csv")
-
+    # 清理旧记录
+    for file_path in [output_txt, port_txt, output_cf_txt]:
+        remove_entries_by_identifier(file_path, identifier)
+    
     # 处理CSV结果
     ip_addresses, download_speeds, latencies = read_csv(result_file)
     if not ip_addresses:
@@ -181,30 +182,24 @@ def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_tx
 
     # 按平均延迟排序（升序）
     combined = list(zip(ip_addresses, download_speeds, latencies))
-    # 提取延迟数值并转换为浮点数（处理可能的'ms'后缀）
     combined.sort(key=lambda x: float(x[2].replace('ms', '').strip()))
-    # 拆分成排序后的列表
-    ip_addresses = [item[0] for item in combined]
-    download_speeds = [item[1] for item in combined]
-    latencies = [item[2] for item in combined]
+    
+    # 写入基础IP信息
+    write_to_file(output_txt, [f"{ip}#{identifier}" for ip, _, _ in combined])
 
-    # 写入基础IP信息（格式：IP#国旗+国家代码）
-    write_to_file(output_txt, [f"{ip}#{emoji_flag}{country_code}" for ip in ip_addresses])
-
-    # 写入端口信息（格式：IP:端口#国旗+国家代码┃延迟）
+    # 写入端口信息
     port_entries = [
-        f"{ip}:{random_port}#{emoji_flag}{country_code}┃{latency}ms"
-        for ip, latency in zip(ip_addresses, latencies)
+        f"{ip}:{random_port}#{identifier}┃{latency}ms"
+        for ip, _, latency in combined
     ]
     write_to_file(port_txt, port_entries)
 
-    # 筛选并写入高速IP（格式：IP:端口#国旗+国家代码┃⚡速度）
+    # 筛选并写入高速IP（下载速度 > 10MB/s）
     fast_ips = [
-        f"{ip}:{random_port}#{emoji_flag}{country_code}┃⚡{speed}MB/s"
-        for ip, speed in zip(ip_addresses, download_speeds)
+        f"{ip}:{random_port}#{identifier}┃⚡{speed}MB/s"
+        for ip, speed, _ in combined
         if float(speed) > 10
     ]
-
     if fast_ips:
         write_to_file(output_cf_txt, fast_ips)
         logging.info(f"筛选下载速度大于 10 MB/s 的 IP 已追加到 {output_cf_txt}")
@@ -360,6 +355,19 @@ def read_csv_mode1(file_path):
         
         return ips, speeds, latencies, colos
 
+def remove_entries_by_identifier(file_path, identifier):
+    """从指定文件中删除包含特定标识符的所有行"""
+    if not os.path.exists(file_path):
+        return
+    
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    
+    with open(file_path, "w", encoding="utf-8") as f:
+        for line in lines:
+            if identifier not in line:
+                f.write(line)
+
 def main():
     """主函数"""
     print_banner()
@@ -399,11 +407,6 @@ def main():
         output_txt = "cfip/fd.txt"
         port_txt = "port/fd.txt"
         output_cf_txt = "speed/fd.txt"
-
-        open(cfip_file, "w").close()
-        logging.info(f"已清空 {cfip_file} 文件。")
-        open(port_txt, "w").close()
-        logging.info(f"已清空 {port_txt} 文件。")
 
         system_arch = platform.machine().lower()
         if system_arch in ["x86_64", "amd64"]:

@@ -175,7 +175,7 @@ def main():
 
     # 生成新的日志文件名
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = f"logs/checker_{current_time}.txt"
+    log_file = f"logs/checker_{current_time}.log"
     os.makedirs(os.path.dirname(log_file), exist_ok=True)  # 确保日志目录存在
 
     process_ip_list(cfip_file, log_file)
