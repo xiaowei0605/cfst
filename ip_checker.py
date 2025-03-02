@@ -1,7 +1,7 @@
 import socket
 import logging
 import argparse
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import concurrent.futures
 import subprocess
 
@@ -15,18 +15,33 @@ logging.basicConfig(
     ]
 )
 
-def check_proxy(host: str, port: int, timeout: float, retries: int) -> bool:
+def get_ips(host: str) -> List[str]:
+    """获取域名的所有IPv4地址"""
+    try:
+        addrinfos = socket.getaddrinfo(host, None, socket.AF_INET)
+        return [info[4][0] for info in addrinfos]
+    except socket.gaierror as e:
+        logging.error(f"DNS解析失败 {host}: {str(e)}")
+        return []
+    except Exception as e:
+        logging.error(f"获取{host} IP地址时发生未知错误: {str(e)}")
+        return []
+
+def check_proxy(host: str, port: int, timeout: float, retries: int) -> Tuple[bool, str]:
     """检测代理端口连通性（支持重试机制）"""
+    last_error = ""
     for attempt in range(retries):
         try:
             with socket.create_connection((host, port), timeout=timeout):
                 logging.debug(f"{host}:{port} 第{attempt+1}次连接成功")
-                return True
+                return (True, "")
         except (socket.timeout, ConnectionRefusedError, OSError) as e:
-            logging.debug(f"{host}:{port} 第{attempt+1}次连接失败: {str(e)}")
+            last_error = f"{type(e).__name__}: {str(e)}"
+            logging.debug(f"{host}:{port} 第{attempt+1}次连接失败: {last_error}")
         except Exception as e:
+            last_error = f"未知错误: {str(e)}"
             logging.error(f"检测 {host}:{port} 时发生未知错误: {str(e)}")
-    return False
+    return (False, last_error)
 
 def main():
     # 解析命令行参数
@@ -51,6 +66,13 @@ def main():
         "jp.616049.xyz": "NRT"
     }
 
+    # 预解析所有域名的IP地址
+    ips_cache: Dict[str, List[str]] = {}
+    for host in proxies.keys():
+        ips = get_ips(host)
+        ips_cache[host] = ips
+        logging.info(f"域名解析 {host} => {', '.join(ips) if ips else '无IP地址'}")
+
     failed_nodes: List[str] = []
 
     # 使用线程池并发检测
@@ -70,10 +92,15 @@ def main():
         for future in concurrent.futures.as_completed(future_to_host):
             host, code = future_to_host[future]
             try:
-                if future.result():
+                success, error_msg = future.result()
+                if success:
                     logging.info(f"✅ {host}:{args.port} 连接正常")
                 else:
-                    logging.error(f"❗ {host}:{args.port} 检测失败")
+                    ips = ips_cache.get(host, [])
+                    ips_str = ', '.join(ips) if ips else '无IP地址'
+                    logging.error(f"❗ {host}:{args.port} 检测失败\n"
+                                 f"  错误原因: {error_msg}\n"
+                                 f"  解析IP: {ips_str}")
                     failed_nodes.append(code)
             except Exception as e:
                 logging.error(f"检测 {host}:{args.port} 时发生异常: {e}")
