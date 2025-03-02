@@ -167,7 +167,7 @@ def main():
         print(f"No input file specified. Using default file: {cfip_file}")
 
     # 删除旧的日志文件
-    log_pattern = "logs/checker_*.txt"
+    log_pattern = "logs/checker_*.log"
     old_logs = glob.glob(log_pattern)
     for log in old_logs:
         os.remove(log)

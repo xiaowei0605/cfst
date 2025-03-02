@@ -300,10 +300,10 @@ def get_test_mode():
         if user_input == "2":
             print(f"{COLOR_GREEN}✓ 已选择逐个测试模式{COLOR_RESET}")
             return 2
-        print(f"{COLOR_GREEN}✓ 已选择批量测试模式{COLOR_RESET}")
+        print(f"{COLOR_GREEN}✓ 已选择批量测试模式(强制使用HTTPing){COLOR_RESET}")
         return 1
     except TimeoutError:
-        print(f"{COLOR_RED}⏰ 选择超时，默认使用批量测试模式{COLOR_RESET}")
+        print(f"{COLOR_RED}⏰ 选择超时，默认使用批量测试模式(强制使用HTTPing){COLOR_RESET}")
         return 1
 
 def process_results_mode1(result_file, output_txt, port_txt, output_cf_txt, random_port):
@@ -338,11 +338,11 @@ def process_results_mode1(result_file, output_txt, port_txt, output_cf_txt, rand
     csv_folder = "csv/ip"
     os.makedirs(csv_folder, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    shutil.copy(result_file, os.path.join(csv_folder, f"all_{timestamp}.csv"))
+    shutil.copy(result_file, os.path.join(csv_folder, f"ip_{timestamp}.csv"))
     open(result_file, "w").close()
 
 def read_csv_mode1(file_path):
-    """读取批量模式CSV文件"""
+    """读取批量模式CSV文件并排序（按地区码分组，同组按延迟排序）"""
     with open(file_path, "r", encoding="utf-8") as f:
         reader = csv.reader(f)
         try:
@@ -350,7 +350,6 @@ def read_csv_mode1(file_path):
         except StopIteration:
             return [], [], [], []
         
-        # 获取列索引
         col_index = {col: idx for idx, col in enumerate(header)}
         required = ["IP 地址", "下载速度 (MB/s)", "平均延迟", "地区码(Colo)"]
         for col in required:
@@ -358,22 +357,36 @@ def read_csv_mode1(file_path):
                 logging.error(f"缺少必要列：{col}")
                 sys.exit(1)
 
-        # 读取全部数据
-        data = list(reader)
-        return (
-            [row[col_index["IP 地址"]] for row in data],
-            [row[col_index["下载速度 (MB/s)"]] for row in data],
-            [row[col_index["平均延迟"]] for row in data],
-            [row[col_index["地区码(Colo)"]] for row in data]
-        )
+        combined = []
+        for row in reader:
+            try:
+                ip = row[col_index["IP 地址"]]
+                speed = row[col_index["下载速度 (MB/s)"]]
+                latency_str = row[col_index["平均延迟"]].replace('ms', '').strip()
+                latency = float(latency_str)
+                colo = row[col_index["地区码(Colo)"]]
+                combined.append( (colo, latency, ip, speed) )
+            except (ValueError, IndexError) as e:
+                logging.warning(f"跳过无效行：{row}，错误：{e}")
+                continue
+        
+        # 按地区码排序，同地区按延迟升序排列
+        sorted_combined = sorted(combined, key=lambda x: (x[0], x[1]))
+        
+        colos = [item[0] for item in sorted_combined]
+        latencies = [item[1] for item in sorted_combined]
+        ips = [item[2] for item in sorted_combined]
+        speeds = [item[3] for item in sorted_combined]
+        
+        return ips, speeds, latencies, colos
 
 def main():
-    """主函数（添加横幅和彩色提示）"""
+    """主函数"""
     print_banner()
     print(f"{COLOR_BOLD}{COLOR_GREEN}🚀 开始执行 Cloudflare 优选IP自动化脚本{COLOR_RESET}\n")
     
     try:
-        # 删除旧的日志文件
+        # 清理旧日志文件
         old_logs = glob.glob('logs/cfst_*.log')
         for old_log in old_logs:
             try:
@@ -381,12 +394,25 @@ def main():
                 print(f"已删除旧日志文件: {old_log}")
             except Exception as e:
                 print(f"删除旧日志文件 {old_log} 时出错: {e}")
-                logging.error(f"删除旧日志文件 {old_log} 时出错: {e}")
 
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = f'logs/cfst_{current_time}.log'
         setup_logging(log_file)
         setup_environment()
+
+        # 清理旧CSV文件
+        logging.info("清理旧CSV文件...")
+        csv_patterns = [
+            os.path.join("csv", "ip", "*.csv"),
+            os.path.join("csv", "result.csv")
+        ]
+        for pattern in csv_patterns:
+            for file_path in glob.glob(pattern):
+                try:
+                    os.remove(file_path)
+                    logging.info(f"已删除旧CSV文件：{file_path}")
+                except Exception as e:
+                    logging.error(f"删除旧CSV文件 {file_path} 失败：{e}")
 
         result_file = "csv/result.csv"
         cfip_file = "cfip/ip.txt"
@@ -441,9 +467,9 @@ def main():
         # 模式设置
         if test_mode == 1:
             ping_mode = "-httping"  # 批量模式强制使用HTTPing
-            dn = 50
-            p = 50
-            logging.info("批量测试模式启用，参数设置为 dn=50, p=50")
+            dn = 10
+            p = 10
+            logging.info(f"批量测试模式启用，参数设置为 dn={dn}, p={p}")
         else:
             ping_mode = get_ping_mode()
             dn = 3
@@ -492,6 +518,16 @@ def main():
                     output_cf_txt, 
                     random_port
                 )
+                # 询问是否退出（非 GitHub 环境）
+                if not is_running_in_github_actions():
+                    print(f"\n{COLOR_BOLD}{COLOR_YELLOW}▶ 是否退出执行？({COLOR_GREEN}Y{COLOR_YELLOW}/n) [5秒后自动继续]{COLOR_RESET}")
+                    try:
+                        user_input = input_with_timeout(5).strip().lower()
+                        if user_input == 'y':
+                            print(f"{COLOR_GREEN}✓ 用户选择退出，终止测试。{COLOR_RESET}")
+                            break
+                    except TimeoutError:
+                        print(f"{COLOR_YELLOW}⏳ 超时未响应，自动继续。{COLOR_RESET}")
 
             # 调用 checker.py 并传递 cfip_file
             logging.info("正在调用 checker.py 检查 IP 列表...")
