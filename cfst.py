@@ -427,24 +427,16 @@ def main():
 
         system_arch = platform.machine().lower()
         if system_arch in ["x86_64", "amd64"]:
-            download_url = "https://github.com/XIU2/CloudflareSpeedTest/releases/download/v2.2.5/CloudflareST_linux_amd64.tar.gz"
             cfst_path = "amd64/cfst"
         elif system_arch in ["aarch64", "arm64"]:
-            download_url = "https://github.com/XIU2/CloudflareSpeedTest/releases/download/v2.2.5/CloudflareST_linux_arm64.tar.gz"
             cfst_path = "arm64/cfst"
         elif system_arch in ["armv7l", "armv6l"]:
-            download_url = "https://github.com/XIU2/CloudflareSpeedTest/releases/download/v2.2.5/CloudflareST_linux_armv7.tar.gz"
             cfst_path = "armv7/cfst"
         else:
             logging.error(f"不支持的架构: {system_arch}")
             sys.exit(1)
 
-        logging.info(f"检测到系统架构为 {system_arch}，将下载对应的 CloudflareST 版本: {download_url}")
-
         # execute_git_pull()
-
-        if not os.path.exists(cfst_path):
-            download_and_extract(download_url, cfst_path)
 
         # 获取测试模式
         test_mode = get_test_mode()
