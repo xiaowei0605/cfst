@@ -173,7 +173,9 @@ def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_tx
 
     # 清理旧记录
     for file_path in [output_txt, port_txt]:
-        remove_entries_by_identifier(file_path, identifier)
+        removed = remove_entries_by_identifier(file_path, identifier)
+        if removed > 0:
+            print(f"{COLOR_GREEN}✓ 已清理 {cfcolo} 在 {file_path} 中的 {removed} 条旧记录{COLOR_RESET}")
     
     # 处理CSV结果
     ip_addresses, download_speeds, latencies = read_csv(result_file)
