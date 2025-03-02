@@ -413,7 +413,7 @@ def main():
         # 获取测试模式
         test_mode = get_test_mode()
         
-        cfcolo_list = ["HKG", "SJC", "LAX", "SEA", "NRT", "SIN", "FRA"]
+        cfcolo_list = ["HKG", "SJC", "LAX", "NRT", "SIN", "FRA"]
         cf_ports = [443]
 
         # 处理命令行参数

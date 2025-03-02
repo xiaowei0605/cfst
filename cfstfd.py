@@ -265,18 +265,18 @@ def get_test_mode():
     print(f"\n{COLOR_BOLD}{COLOR_YELLOW}▶ 请选择测试模式:{COLOR_RESET}")
     print(f"{COLOR_GREEN}1{COLOR_RESET}) {COLOR_CYAN}批量测试（所有区域）{COLOR_RESET}")
     print(f"{COLOR_GREEN}2{COLOR_RESET}) {COLOR_CYAN}逐个测试（分区域）{COLOR_RESET}")
-    print(f"{COLOR_YELLOW}⏳ 5秒内未选择将自动使用批量测试模式{COLOR_RESET}")
+    print(f"{COLOR_YELLOW}⏳ 5秒内未选择将自动使用逐个测试模式{COLOR_RESET}")  # 修改提示信息
 
     try:
         user_input = input_with_timeout(5)
-        if user_input == "2":
-            print(f"{COLOR_GREEN}✓ 已选择逐个测试模式{COLOR_RESET}")
-            return 2
-        print(f"{COLOR_GREEN}✓ 已选择批量测试模式(强制使用HTTPing){COLOR_RESET}")
-        return 1
+        if user_input == "1":  # 修改判断条件
+            print(f"{COLOR_GREEN}✓ 已选择批量测试模式(强制使用HTTPing){COLOR_RESET}")
+            return 1
+        print(f"{COLOR_GREEN}✓ 已选择逐个测试模式{COLOR_RESET}")  # 修改默认选项
+        return 2
     except TimeoutError:
-        print(f"{COLOR_RED}⏰ 选择超时，默认使用批量测试模式(强制使用HTTPing){COLOR_RESET}")
-        return 1
+        print(f"{COLOR_RED}⏰ 选择超时，默认使用逐个测试模式{COLOR_RESET}")  # 修改超时默认值
+        return 2
 
 def process_results_mode1(result_file, output_txt, port_txt, output_cf_txt, random_port):
     """处理批量模式测试结果"""
@@ -413,7 +413,7 @@ def main():
         # 获取测试模式
         test_mode = get_test_mode()
         
-        cfcolo_list = ["HKG", "SJC", "LAX", "SEA", "NRT", "SIN", "FRA"]
+        cfcolo_list = ["HKG", "SJC", "LAX", "NRT", "SIN", "FRA"]
         cf_ports = [443]
 
         # 处理命令行参数
@@ -428,17 +428,16 @@ def main():
         else:
             logging.info(f"使用默认区域列表: {cfcolo_list}")
 
-        # 模式设置
         if test_mode == 1:
             ping_mode = "-httping"  # 批量模式强制使用HTTPing
             dn = 20
             p = 20
             logging.info(f"批量测试模式启用，参数设置为 dn={dn}, p={p}")
         else:
-            ping_mode = get_ping_mode()
+            ping_mode = get_ping_mode()  # 逐个测试模式允许选择
             dn = 3
             p = 3
-        
+                
         # 执行测试
         if test_mode == 1:
             # 批量模式
