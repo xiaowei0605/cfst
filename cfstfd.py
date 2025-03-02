@@ -372,7 +372,6 @@ def remove_entries_by_identifier(file_path, identifier):
                 # 记录删除的条目
                 entry = line.strip()
                 logging.info(f"从文件 {file_path} 中删除条目: {entry}")
-                print(f"{COLOR_YELLOW}🗑️ 删除旧条目: {entry}{COLOR_RESET}")
                 removed_count += 1
             else:
                 f.write(line)
@@ -468,13 +467,11 @@ def main():
                 emoji_data = colo_emojis.get(cfcolo, ['🌐', cfcolo])
                 identifier = f"{emoji_data[0]}{emoji_data[1]}"
                 # 需要清理的文件列表
-                target_files = [output_txt, port_txt, output_cf_txt]
+                target_files = [output_txt, port_txt]
                 for file_path in target_files:
                     removed = remove_entries_by_identifier(file_path, identifier)
                     if removed > 0:
-                        print(f"{COLOR_GREEN}✓ 已清理 {cfcolo} 在 {os.path.basename(file_path)} 中的 {removed} 条旧记录{COLOR_RESET}")
-                    else:
-                        print(f"{COLOR_CYAN}ℹ️ {cfcolo} 在 {os.path.basename(file_path)} 中无旧记录{COLOR_RESET}")
+                        print(f"{COLOR_GREEN}✓ 已清理 {cfcolo} 在 {file_path} 中的 {removed} 条旧记录{COLOR_RESET}")
             # 执行后续测试...
             random_port = random.choice(cf_ports)
             execute_cfst_test(
