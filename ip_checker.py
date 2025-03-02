@@ -114,32 +114,6 @@ def check_proxy(host: str, port: int, timeout: float, retries: int) -> Tuple[boo
             logging.error(f"检测 {host}:{port} 时发生未知错误: {str(e)}")
     return (False, last_error)
 
-def generate_table(data: List[Tuple[str, str, str]]) -> str:
-    """生成解析结果表格"""
-    if not data:
-        return ""
-    
-    # 计算各列最大宽度（包含表头）
-    headers = ("地区代码", "域名", "解析IP")
-    code_width = max(max(len(item[0]) for item in data), len(headers[0]))
-    host_width = max(max(len(item[1]) for item in data), len(headers[1]))
-    ips_width = max(max(len(item[2]) for item in data), len(headers[2]))
-
-    # 构建表格边框
-    separator = f"+{'-'*(code_width+2)}+{'-'*(host_width+2)}+{'-'*(ips_width+2)}+"
-    
-    # 构建表头
-    header = f"| {headers[0].ljust(code_width)} | {headers[1].ljust(host_width)} | {headers[2].ljust(ips_width)} |"
-    
-    # 构建数据行
-    rows = []
-    for code, host, ips in data:
-        row = f"| {code.ljust(code_width)} | {host.ljust(host_width)} | {ips.ljust(ips_width)} |"
-        rows.append(row)
-    
-    # 组合表格元素
-    return "\n".join([separator, header, separator] + rows + [separator])
-
 def main():
     # 解析命令行参数
     parser = argparse.ArgumentParser(
@@ -165,17 +139,12 @@ def main():
 
     # 预解析所有域名的IP地址
     ips_cache: Dict[str, List[str]] = {}
-    table_data = []  # 新增：收集表格数据
     for host, code in proxies.items():
         ips = get_ips(host)
         ips_cache[host] = ips
-        # 新增：收集表格数据
-        ips_str = ', '.join(ips) if ips else '无IP地址'
-        table_data.append((code, host, ips_str))
-
-    # 新增：输出解析结果表格
-    logging.info("\n🌐 域名解析结果:")
-    logging.info(generate_table(table_data))
+        # 修改点1：美化IP显示格式
+        ips_formatted = '\n  - '.join(ips) if ips else '无IP地址'
+        logging.info(f"[{code}] 域名解析 {host} => \n  - {ips_formatted}")
 
     failed_nodes: List[str] = []
     success_count = 0
@@ -199,8 +168,8 @@ def main():
             host, code = future_to_host[future]
             try:
                 success, error_msg = future.result()
-                ips = ips_cache.get(host, [])
-                ips_str = ', '.join(ips) if ips else '无IP地址'
+               # 修改点2：美化失败日志中的IP显示
+                ips_str = '\n  - '.join(ips) if ips else '无IP地址'
                 
                 if success:
                     success_count += 1
@@ -209,14 +178,10 @@ def main():
                     fail_count += 1
                     logging.error(
                         f"[{code}] ❌ {host}:{args.port} 检测失败\n"
-                        f"  解析IP: {ips_str}\n"
+                        f"  解析IP:\n  - {ips_str}\n"
                         f"  错误原因: {error_msg}"
                     )
                     failed_nodes.append(code)
-            except Exception as e:
-                fail_count += 1
-                logging.error(f"[{code}] ❌ {host}:{args.port} 检测异常: {e}")
-                failed_nodes.append(code)
 
     # 显示汇总信息
     logging.info("\n" + "="*40)
