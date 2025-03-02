@@ -202,7 +202,7 @@ def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_tx
     fast_ips = [
         f"[{ip}]:{random_port}#{emoji_flag}{country_code}┃⚡{speed}MB/s"
         for ip, speed in zip(ip_addresses, download_speeds)
-        if float(speed) > 10
+        if float(speed) > 0
     ]
 
     if fast_ips:
