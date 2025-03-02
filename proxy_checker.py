@@ -1,19 +1,82 @@
+import os
 import socket
 import logging
 import argparse
 from typing import Dict, List, Tuple
 import concurrent.futures
 import subprocess
+import sys
+import requests
+from datetime import datetime
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
+
+# Telegram配置
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+
+# 自定义颜色过滤器
+class ColorFilter(logging.Filter):
+    def filter(self, record):
+        color_map = {
+            logging.DEBUG: "\033[37m",   # 灰色
+            logging.INFO: "\033[92m",    # 绿色
+            logging.WARNING: "\033[93m", # 黄色
+            logging.ERROR: "\033[91m",   # 红色
+            logging.CRITICAL: "\033[91m" # 红色
+        }
+        reset = "\033[0m"
+        
+        color = color_map.get(record.levelno, "")
+        if color:
+            record.msg = f"{color}{record.msg}{reset}"
+        return True
 
 # 配置日志系统
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('proxy_check.log'),
-        logging.StreamHandler()
-    ]
-)
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+# 文件日志（无颜色）
+file_handler = logging.FileHandler('proxy_check.log')
+file_handler.setLevel(logging.INFO)
+file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(file_formatter)
+
+# 控制台日志（带颜色）
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.addFilter(ColorFilter())
+console_formatter = logging.Formatter('%(message)s')
+console_handler.setFormatter(console_formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
+def send_telegram_notification(message: str, parse_mode: str = 'Markdown'):
+    """发送Telegram通知"""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        logging.warning("未配置Telegram通知参数，跳过通知")
+        return
+    
+    api_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message,
+        "parse_mode": parse_mode
+    }
+    
+    try:
+        response = requests.post(api_url, json=payload, timeout=10)
+        response.raise_for_status()
+        logging.debug("Telegram通知发送成功")
+    except Exception as e:
+        logging.error(f"发送Telegram通知失败: {str(e)}")
+
+def format_telegram_message(title: str, content: str) -> str:
+    """格式化Telegram消息"""
+    return f"*🔍 代理检测报告 - {title}*\n\n{content}\n\n`#自动运维`"
 
 def get_ips(host: str) -> List[str]:
     """获取域名的所有IPv4地址"""
@@ -68,12 +131,14 @@ def main():
 
     # 预解析所有域名的IP地址
     ips_cache: Dict[str, List[str]] = {}
-    for host in proxies.keys():
+    for host, code in proxies.items():
         ips = get_ips(host)
         ips_cache[host] = ips
-        logging.info(f"域名解析 {host} => {', '.join(ips) if ips else '无IP地址'}")
+        logging.info(f"[{code}] 域名解析 {host} => {', '.join(ips) if ips else '无IP地址'}")
 
     failed_nodes: List[str] = []
+    success_count = 0
+    fail_count = 0
 
     # 使用线程池并发检测
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -93,24 +158,50 @@ def main():
             host, code = future_to_host[future]
             try:
                 success, error_msg = future.result()
+                ips = ips_cache.get(host, [])
+                ips_str = ', '.join(ips) if ips else '无IP地址'
+                
                 if success:
-                    logging.info(f"✅ {host}:{args.port} 连接正常")
+                    success_count += 1
+                    logging.info(f"[{code}] ✅ {host}:{args.port} 连接成功")
                 else:
-                    ips = ips_cache.get(host, [])
-                    ips_str = ', '.join(ips) if ips else '无IP地址'
-                    logging.error(f"❗ {host}:{args.port} 检测失败\n"
-                                 f"  错误原因: {error_msg}\n"
-                                 f"  解析IP: {ips_str}")
+                    fail_count += 1
+                    logging.error(
+                        f"[{code}] ❌ {host}:{args.port} 检测失败\n"
+                        f"  解析IP: {ips_str}\n"
+                        f"  错误原因: {error_msg}"
+                    )
                     failed_nodes.append(code)
             except Exception as e:
-                logging.error(f"检测 {host}:{args.port} 时发生异常: {e}")
+                fail_count += 1
+                logging.error(f"[{code}] ❌ {host}:{args.port} 检测异常: {e}")
                 failed_nodes.append(code)
 
+    # 显示汇总信息
+    logging.info("\n" + "="*40)
+    logging.info(f"总检测节点: {len(proxies)}")
+    logging.info(f"✅ 成功节点: {success_count}")
+    if fail_count > 0:
+        logging.error(f"❌ 失败节点: {fail_count}")
+    else:
+        logging.info("🎉 所有节点检测通过！")
+
     # 处理失败节点并触发更新
-    unique_codes = sorted({code for code in failed_nodes})  # 去重并排序
+    unique_codes = sorted(set(failed_nodes))
 
     if unique_codes:
         codes_str = ",".join(unique_codes)
+        # 发送更新通知
+        update_msg = format_telegram_message(
+            "触发节点更新", 
+            f"• 失败地区: `{codes_str}`\n"
+            f"• 检测端口: `{args.port}`\n"
+            f"• 失败节点数: `{fail_count}/{len(proxies)}`\n"
+            f"• 触发时间: `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`"
+        )
+        send_telegram_notification(update_msg)
+        
+        logging.info("\n" + "="*40)
         logging.info(f"触发更新: {codes_str}")
         try:
             result = subprocess.run(
@@ -120,13 +211,30 @@ def main():
                 stderr=subprocess.PIPE,
                 text=True
             )
-            logging.info(f"更新成功，输出：{result.stdout}")
+            # 发送成功通知
+            success_msg = format_telegram_message(
+                "更新成功",
+                f"• 地区代码: `{codes_str}`\n"
+                f"• 输出结果:\n```\n{result.stdout[:1000]}```"
+            )
+            send_telegram_notification(success_msg)
+            logging.info(f"🔄 更新成功\n输出结果:\n{result.stdout}")
         except subprocess.CalledProcessError as e:
-            logging.error(f"更新失败，错误码：{e.returncode}\n错误信息：{e.stderr}")
+            # 发送失败通知
+            error_msg = format_telegram_message(
+                "更新失败",
+                f"• 地区代码: `{codes_str}`\n"
+                f"• 错误信息:\n```\n{e.stderr[:1000]}```"
+            )
+            send_telegram_notification(error_msg)
+            logging.error(f"❌ 更新失败\n错误信息:\n{e.stderr}")
         except FileNotFoundError:
-            logging.error("更新脚本 'cfstfd.py' 未找到")
-    else:
-        logging.info(f"所有节点在端口 {args.port} 均正常，无需更新")
+            error_msg = format_telegram_message(
+                "脚本未找到",
+                "更新脚本 'cfst.py' 未找到"
+            )
+            send_telegram_notification(error_msg)
+            logging.error("❌ 更新脚本 'cfst.py' 未找到")
 
 if __name__ == "__main__":
     main()
