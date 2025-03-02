@@ -33,6 +33,9 @@ jobs:
           echo "API_HASH=${{ secrets.API_HASH }}" >> .env
           echo "SESSION_NAME=${{ secrets.SESSION_NAME }}" >> .env
 
+      - name: IP health check and auto-update
+        run: python ip_checker.py  # 直接运行Python脚本
+
       - name: Proxy health check and auto-update
         run: python proxy_checker.py  # 直接运行Python脚本
 
