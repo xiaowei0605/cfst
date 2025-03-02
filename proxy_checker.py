@@ -227,7 +227,7 @@ def main():
             success_msg = format_telegram_message(
                 "更新成功",
                 f"• 地区代码: `{codes_str}`\n"
-                f"• 输出结果:\n```\n{result.stdout[:1000]}```"
+                f"• 输出结果:\n```\n{result.stdout[:3800]}```"
             )
             send_telegram_notification(success_msg)
             logging.info(f"🔄 更新成功\n输出结果:\n{result.stdout}")
@@ -236,7 +236,7 @@ def main():
             error_msg = format_telegram_message(
                 "更新失败",
                 f"• 地区代码: `{codes_str}`\n"
-                f"• 错误信息:\n```\n{e.stderr[:1000]}```"
+                f"• 错误信息:\n```\n{e.stderr[:3800]}```"
             )
             send_telegram_notification(error_msg)
             logging.error(f"❌ 更新失败\n错误信息:\n{e.stderr}")
