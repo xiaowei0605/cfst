@@ -21,6 +21,10 @@ from colo_emojis import colo_emojis
 # 初始化设置
 # ------------------------------
 
+# 定义全局变量
+fd = "fd"
+ip_file = "proxy.txt"
+
 # 在文件开头添加颜色定义
 COLOR_RESET = "\033[0m"
 COLOR_RED = "\033[31m"
@@ -192,7 +196,7 @@ def execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode, dn
 
     command = [
         f"./{cfst_path}",
-        "-f", "proxy.txt",
+        "-f", ip_file,
         "-o", result_file,
         "-url", "https://cloudflare.cdn.openbsd.org/pub/OpenBSD/7.3/src.tar.gz",
         "-cfcolo", cfcolo,
@@ -273,7 +277,7 @@ def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_tx
         logging.info(f"区域 {cfcolo} 未找到下载速度大于 10 MB/s 的 IP，跳过写入操作。")
 
     # 确保 csv 文件夹存在
-    csv_folder = "csv/fd"
+    csv_folder = f"csv/{fd}"
     os.makedirs(csv_folder, exist_ok=True)
     
     # 在清空 result_file 前，先复制文件到指定路径
@@ -313,10 +317,10 @@ def process_results_mode1(result_file, output_txt, port_txt, output_cf_txt, rand
         logging.info(f"高速IP已写入 {output_cf_txt}")
     
     # 归档结果文件
-    csv_folder = "csv/fd"
+    csv_folder = f"csv/{fd}"
     os.makedirs(csv_folder, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    shutil.copy(result_file, os.path.join(csv_folder, f"fd_{timestamp}.csv"))
+    shutil.copy(result_file, os.path.join(csv_folder, f"{fd}_{timestamp}.csv"))
     open(result_file, "w").close()
 
 # ------------------------------
@@ -396,7 +400,7 @@ def update_to_github():
     try:
         logging.info("变更已提交到GitHub")
         subprocess.run(["git", "add", "."], check=True)
-        commit_message = f"cfst: Update fd.txt on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        commit_message = f"cfst: Update {fd}.txt on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         subprocess.run(["git", "commit", "-m", commit_message], check=True)
         subprocess.run(["git", "push", "-f", "origin", "main"], check=True)
         print("变更已提交到GitHub。")
@@ -415,7 +419,7 @@ def main():
     
     try:
         # 清理旧日志文件
-        old_logs = glob.glob('logs/cfstfd_*.log')
+        old_logs = glob.glob(f'logs/cfst{fd}_*.log')
         for old_log in old_logs:
             try:
                 os.remove(old_log)
@@ -424,14 +428,14 @@ def main():
                 print(f"删除旧日志文件 {old_log} 时出错: {e}")
 
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = f'logs/cfstfd_{current_time}.log'
+        log_file = f'logs/cfst{fd}_{current_time}.log'
         setup_logging(log_file)
         setup_environment()
 
         # 清理旧CSV文件
         logging.info("清理旧CSV文件...")
         csv_patterns = [
-            os.path.join("csv", "fd", "*.csv"),
+            os.path.join("csv", f"{fd}", "*.csv"),
             os.path.join("csv", "result.csv")
         ]
         for pattern in csv_patterns:
@@ -442,11 +446,11 @@ def main():
                 except Exception as e:
                     logging.error(f"删除旧CSV文件 {file_path} 失败：{e}")
 
-        result_file = "csv/resultfd.csv"
-        cfip_file = "cfip/fd.txt"
-        output_txt = "cfip/fd.txt"
-        port_txt = "port/fd.txt"
-        output_cf_txt = "speed/fd.txt"
+        result_file = f"csv/result{fd}.csv"
+        cfip_file = f"cfip/{fd}.txt"
+        output_txt = f"cfip/{fd}.txt"
+        port_txt = f"port/{fd}.txt"
+        output_cf_txt = f"speed/{fd}.txt"
 
         system_arch = platform.machine().lower()
         if system_arch in ["x86_64", "amd64"]:
