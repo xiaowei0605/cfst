@@ -3,6 +3,7 @@ name: Run checker
 on:
   schedule:
     - cron: "*/20 * * * *"
+      timezone: Asia/Shanghai  # 添加时区配置
   workflow_dispatch:
 
 jobs:
@@ -32,12 +33,14 @@ jobs:
           echo "API_ID=${{ secrets.API_ID }}" >> .env
           echo "API_HASH=${{ secrets.API_HASH }}" >> .env
           echo "SESSION_NAME=${{ secrets.SESSION_NAME }}" >> .env
+          echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
+          echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
 
       - name: IP health check and auto-update
-        run: python ip_checker.py  # 直接运行Python脚本
+        run: python ip_checker.py
 
       - name: Proxy health check and auto-update
-        run: python proxy_checker.py  # 直接运行Python脚本
+        run: python proxy_checker.py
 
       - name: Run tcip checker
         run: python checker.py cfip/tcip.txt
@@ -62,6 +65,6 @@ jobs:
             echo "No changes to commit."
           else
             git add .
-            git commit -m "cfst: Auto-update on $(date +'%Y-%m-%d %H:%M:%S')"
+            git commit -m "cfst: Auto-update on $(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')"  # 添加时区参数
             git push origin main
           fi

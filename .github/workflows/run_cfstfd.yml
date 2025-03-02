@@ -3,6 +3,7 @@ name: Run cfstfd.py
 on:
   # schedule:
   #   - cron: "0 */2 * * *"  # 每2小时的第0分钟触发
+  #    timezone: Asia/Shanghai  # 添加时区配置
   workflow_dispatch:        # 允许手动触发
     inputs:
       ddns:

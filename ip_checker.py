@@ -79,10 +79,18 @@ def format_telegram_message(title: str, content: str) -> str:
     return f"*🔍 代理检测报告 - {title}*\n\n{content}\n\n`#自动运维`"
 
 def get_ips(host: str) -> List[str]:
-    """获取域名的所有IPv4地址"""
+    """获取域名的所有IPv4地址（自动去重）"""
     try:
         addrinfos = socket.getaddrinfo(host, None, socket.AF_INET)
-        return [info[4][0] for info in addrinfos]
+        # 使用有序字典去重，保留第一个出现的IP
+        seen = set()
+        ips = []
+        for info in addrinfos:
+            ip = info[4][0]
+            if ip not in seen:
+                seen.add(ip)
+                ips.append(ip)
+        return ips
     except socket.gaierror as e:
         logging.error(f"DNS解析失败 {host}: {str(e)}")
         return []
@@ -105,6 +113,32 @@ def check_proxy(host: str, port: int, timeout: float, retries: int) -> Tuple[boo
             last_error = f"未知错误: {str(e)}"
             logging.error(f"检测 {host}:{port} 时发生未知错误: {str(e)}")
     return (False, last_error)
+
+def generate_table(data: List[Tuple[str, str, str]]) -> str:
+    """生成解析结果表格"""
+    if not data:
+        return ""
+    
+    # 计算各列最大宽度（包含表头）
+    headers = ("地区代码", "域名", "解析IP")
+    code_width = max(max(len(item[0]) for item in data), len(headers[0]))
+    host_width = max(max(len(item[1]) for item in data), len(headers[1]))
+    ips_width = max(max(len(item[2]) for item in data), len(headers[2]))
+
+    # 构建表格边框
+    separator = f"+{'-'*(code_width+2)}+{'-'*(host_width+2)}+{'-'*(ips_width+2)}+"
+    
+    # 构建表头
+    header = f"| {headers[0].ljust(code_width)} | {headers[1].ljust(host_width)} | {headers[2].ljust(ips_width)} |"
+    
+    # 构建数据行
+    rows = []
+    for code, host, ips in data:
+        row = f"| {code.ljust(code_width)} | {host.ljust(host_width)} | {ips.ljust(ips_width)} |"
+        rows.append(row)
+    
+    # 组合表格元素
+    return "\n".join([separator, header, separator] + rows + [separator])
 
 def main():
     # 解析命令行参数
@@ -131,10 +165,17 @@ def main():
 
     # 预解析所有域名的IP地址
     ips_cache: Dict[str, List[str]] = {}
+    table_data = []  # 新增：收集表格数据
     for host, code in proxies.items():
         ips = get_ips(host)
         ips_cache[host] = ips
-        logging.info(f"[{code}] 域名解析 {host} => {', '.join(ips) if ips else '无IP地址'}")
+        # 新增：收集表格数据
+        ips_str = ', '.join(ips) if ips else '无IP地址'
+        table_data.append((code, host, ips_str))
+
+    # 新增：输出解析结果表格
+    logging.info("\n🌐 域名解析结果:")
+    logging.info(generate_table(table_data))
 
     failed_nodes: List[str] = []
     success_count = 0

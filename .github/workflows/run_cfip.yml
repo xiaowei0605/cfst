@@ -3,6 +3,7 @@ name: Run cfip.py
 on:
   schedule:
     - cron: "0 * * * *"  # 每小时的第0分钟触发
+      timezone: Asia/Shanghai  # 添加时区配置
   workflow_dispatch:  # 允许手动触发
 
 jobs:
