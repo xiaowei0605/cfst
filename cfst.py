@@ -73,34 +73,6 @@ def create_directories(directories):
         os.makedirs(directory, exist_ok=True)
         logging.info(f"已创建或确认目录 {directory} 存在。")
 
-def download_and_extract(url, target_path):
-    """下载并解压文件"""
-    downloaded_file = url.split("/")[-1]
-    logging.info(f"正在下载文件: {downloaded_file}")
-    subprocess.run(["wget", "-N", url], check=True)
-    
-    if downloaded_file.endswith(".tar.gz"):
-        try:
-            subprocess.run(["tar", "-zxf", downloaded_file], check=True)
-            logging.info(f"已成功解压: {downloaded_file}")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"解压失败: {e}")
-            sys.exit(1)
-    elif downloaded_file.endswith(".zip"):
-        try:
-            subprocess.run(["unzip", downloaded_file], check=True)
-            logging.info(f"已成功解压: {downloaded_file}")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"解压失败: {e}")
-            sys.exit(1)
-    else:
-        logging.error("无法识别的压缩文件格式！")
-        sys.exit(1)
-    
-    remove_file(downloaded_file)
-    subprocess.run(["mv", "CloudflareST", target_path], check=True)
-    subprocess.run(["chmod", "+x", target_path], check=True)
-
 def write_to_file(file_path, data, mode="a"):
     """将数据写入文件"""
     with open(file_path, mode=mode, encoding="utf-8") as file:

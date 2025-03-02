@@ -73,34 +73,6 @@ def create_directories(directories):
         os.makedirs(directory, exist_ok=True)
         logging.info(f"已创建或确认目录 {directory} 存在。")
 
-def download_and_extract(url, target_path):
-    """下载并解压文件"""
-    downloaded_file = url.split("/")[-1]
-    logging.info(f"正在下载文件: {downloaded_file}")
-    subprocess.run(["wget", "-N", url], check=True)
-    
-    if downloaded_file.endswith(".tar.gz"):
-        try:
-            subprocess.run(["tar", "-zxf", downloaded_file], check=True)
-            logging.info(f"已成功解压: {downloaded_file}")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"解压失败: {e}")
-            sys.exit(1)
-    elif downloaded_file.endswith(".zip"):
-        try:
-            subprocess.run(["unzip", downloaded_file], check=True)
-            logging.info(f"已成功解压: {downloaded_file}")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"解压失败: {e}")
-            sys.exit(1)
-    else:
-        logging.error("无法识别的压缩文件格式！")
-        sys.exit(1)
-    
-    remove_file(downloaded_file)
-    subprocess.run(["mv", "CloudflareST", target_path], check=True)
-    subprocess.run(["chmod", "+x", target_path], check=True)
-
 def write_to_file(file_path, data, mode="a"):
     """将数据写入文件"""
     with open(file_path, mode=mode, encoding="utf-8") as file:
@@ -109,7 +81,7 @@ def write_to_file(file_path, data, mode="a"):
             logging.info(f"写入: {item}")
 
 def read_csv(file_path):
-    """读取CSV文件并返回数据（IPV6、下载速度、平均延迟）"""
+    """读取CSV文件并返回数据（IP、下载速度、平均延迟）"""
     if os.path.getsize(file_path) == 0:
         logging.warning(f"文件 {file_path} 为空，跳过读取。")
         return None, None, None
@@ -208,17 +180,17 @@ def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_tx
     if not ip_addresses:
         return
 
-    # 写入基础IP信息（格式：IPV6#国旗+国家代码）
+    # 写入基础IP信息（格式：IP#国旗+国家代码）
     write_to_file(output_txt, [f"{ip}#{emoji_flag}{country_code}" for ip in ip_addresses])
 
-    # 写入端口信息（格式：IPV6:端口#国旗+国家代码┃延迟）
+    # 写入端口信息（格式：IP:端口#国旗+国家代码┃延迟）
     port_entries = [
         f"[{ip}]:{random_port}#{emoji_flag}{country_code}┃{latency}ms"
         for ip, latency in zip(ip_addresses, latencies)
     ]
     write_to_file(port_txt, port_entries)
 
-    # 筛选并写入高速IPV6（格式：IPV6:端口#国旗+国家代码┃⚡速度）
+    # 筛选并写入高速IP（格式：IP:端口#国旗+国家代码┃⚡速度）
     fast_ips = [
         f"[{ip}]:{random_port}#{emoji_flag}{country_code}┃⚡{speed}MB/s"
         for ip, speed in zip(ip_addresses, download_speeds)
@@ -319,14 +291,14 @@ def process_results_mode1(result_file, output_txt, port_txt, output_cf_txt, rand
 
     # 写入端口信息
     port_entries = [
-        f"{ip}:{random_port}{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃{latency}ms"
+        f"[{ip}]:{random_port}{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃{latency}ms"
         for ip, latency, colo in zip(ip_addresses, latencies, colos)
     ]
     write_to_file(port_txt, port_entries, "a")
 
     # 筛选高速IP（>10MB/s）
     fast_ips = [
-        f"{ip}:{random_port}{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃⚡{speed}MB/s"
+        f"[{ip}]:{random_port}{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃⚡{speed}MB/s"
         for ip, speed, colo in zip(ip_addresses, download_speeds, colos)
         if float(speed) > 10
     ]
@@ -335,10 +307,10 @@ def process_results_mode1(result_file, output_txt, port_txt, output_cf_txt, rand
         logging.info(f"高速IP已写入 {output_cf_txt}")
     
     # 归档结果文件
-    csv_folder = "csv/ip"
+    csv_folder = "csv/ipv6"
     os.makedirs(csv_folder, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    shutil.copy(result_file, os.path.join(csv_folder, f"ip_{timestamp}.csv"))
+    shutil.copy(result_file, os.path.join(csv_folder, f"ipv6_{timestamp}.csv"))
     open(result_file, "w").close()
 
 def read_csv_mode1(file_path):
@@ -387,7 +359,7 @@ def main():
     
     try:
         # 清理旧日志文件
-        old_logs = glob.glob('logs/cfst_*.log')
+        old_logs = glob.glob('logs/cfstv6_*.log')
         for old_log in old_logs:
             try:
                 os.remove(old_log)
@@ -396,14 +368,14 @@ def main():
                 print(f"删除旧日志文件 {old_log} 时出错: {e}")
 
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = f'logs/cfst_{current_time}.log'
+        log_file = f'logs/cfstv6_{current_time}.log'
         setup_logging(log_file)
         setup_environment()
 
         # 清理旧CSV文件
         logging.info("清理旧CSV文件...")
         csv_patterns = [
-            os.path.join("csv", "ip", "*.csv"),
+            os.path.join("csv", "ipv6", "*.csv"),
             os.path.join("csv", "result.csv")
         ]
         for pattern in csv_patterns:
@@ -415,10 +387,10 @@ def main():
                     logging.error(f"删除旧CSV文件 {file_path} 失败：{e}")
 
         result_file = "csv/result.csv"
-        cfip_file = "cfip/ip.txt"
-        output_txt = "cfip/ip.txt"
-        port_txt = "port/ip.txt"
-        output_cf_txt = "speed/ip.txt"
+        cfip_file = "cfip/ipv6.txt"
+        output_txt = "cfip/ipv6.txt"
+        port_txt = "port/ipv6.txt"
+        output_cf_txt = "speed/ipv6.txt"
 
         open(cfip_file, "w").close()
         logging.info(f"已清空 {cfip_file} 文件。")

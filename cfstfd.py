@@ -6,7 +6,6 @@ import random
 import time
 import logging
 import platform
-import hashlib
 import glob
 import shutil
 
@@ -21,6 +20,29 @@ from colo_emojis import colo_emojis
 # ------------------------------
 # 初始化设置
 # ------------------------------
+
+# 在文件开头添加颜色定义
+COLOR_RESET = "\033[0m"
+COLOR_RED = "\033[31m"
+COLOR_GREEN = "\033[32m"
+COLOR_YELLOW = "\033[33m"
+COLOR_CYAN = "\033[36m"
+COLOR_BOLD = "\033[1m"
+COLOR_BLINK = "\033[5m"
+
+def print_banner():
+    """打印彩色横幅"""
+    banner = rf"""
+{COLOR_CYAN}
+   ____ _      __ _       _ __ _____        _   __     ___
+  / ___| | ___/ _| | __ _| / _|___ /  __ _| |_/ /_   / _ \ _ __ ___
+ | |   | |/ / |_| |/ _` | | |_ |_ \ / _` | __| '_ \ | | | | '_ ` _ \
+ | |___|   <|  _| | (_| | |  _|__) | (_| | |_| | | || |_| | | | | | |
+  \____|_|\_\_| |_|\__,_|_|_| |____/ \__,_|\__|_| |_(_)___/|_| |_| |_|
+
+{COLOR_RESET}
+"""
+    print(banner)
 
 def setup_logging(log_file):
     """配置日志，将日志同时输出到控制台和文件"""
@@ -50,34 +72,6 @@ def create_directories(directories):
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
         logging.info(f"已创建或确认目录 {directory} 存在。")
-
-def download_and_extract(url, target_path):
-    """下载并解压文件"""
-    downloaded_file = url.split("/")[-1]
-    logging.info(f"正在下载文件: {downloaded_file}")
-    subprocess.run(["wget", "-N", url], check=True)
-    
-    if downloaded_file.endswith(".tar.gz"):
-        try:
-            subprocess.run(["tar", "-zxf", downloaded_file], check=True)
-            logging.info(f"已成功解压: {downloaded_file}")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"解压失败: {e}")
-            sys.exit(1)
-    elif downloaded_file.endswith(".zip"):
-        try:
-            subprocess.run(["unzip", downloaded_file], check=True)
-            logging.info(f"已成功解压: {downloaded_file}")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"解压失败: {e}")
-            sys.exit(1)
-    else:
-        logging.error("无法识别的压缩文件格式！")
-        sys.exit(1)
-    
-    remove_file(downloaded_file)
-    subprocess.run(["mv", "CloudflareST", target_path], check=True)
-    subprocess.run(["chmod", "+x", target_path], check=True)
 
 def write_to_file(file_path, data, mode="a"):
     """将数据写入文件"""
@@ -132,7 +126,7 @@ def execute_git_pull():
         logging.error(f"git pull 失败: {e}")
         sys.exit(1)
 
-def execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode):
+def execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode, dn=3, p=3):
     """执行 CloudflareSpeedTest 测试"""
     logging.info(f"正在测试区域: {cfcolo}，模式: {'HTTPing' if ping_mode == '-httping' else 'TCPing'}")
 
@@ -140,14 +134,14 @@ def execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode):
         f"./{cfst_path}",
         "-f", "proxy.txt",
         "-o", result_file,
-        "-url", "https://cloudflare.cdn.openbsd.org/pub/OpenBSD/7.3/alpha/install73.iso",
+        "-url", "https://cloudflare.cdn.openbsd.org/pub/OpenBSD/7.3/src.tar.gz",
         "-cfcolo", cfcolo,
         "-tl", "200",
         "-tll", "5",
         "-tlr", "0.2",
         "-tp", str(random_port),
-        "-dn", "3",
-        "-p", "3"
+        "-dn", str(dn),
+        "-p", str(p)
     ]
 
     if ping_mode:  # 只有在选择 HTTPing 时才加 `-httping`
@@ -169,9 +163,12 @@ def execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode):
 
 def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_txt, random_port):
     # 获取国旗emoji和国家代码
-    emoji_data = colo_emojis.get(cfcolo, ['☁️', cfcolo])  # 默认值包含emoji和原CFcolo
+    emoji_data = colo_emojis.get(cfcolo, ['🌐', cfcolo])
     emoji_flag = emoji_data[0]
     country_code = emoji_data[1]
+
+    # 添加彩色处理状态提示
+    print(f"\n{COLOR_BOLD}{COLOR_CYAN}🔍 正在处理 [{emoji_flag} {cfcolo}] 的测试结果...{COLOR_RESET}")
 
     # 删除 {cfcolo}-FD.csv 文件
     csv_folder = "csv/fd"
@@ -211,42 +208,44 @@ def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_tx
     os.makedirs(csv_folder, exist_ok=True)
     
     # 在清空 result_file 前，先复制文件到指定路径
-    cfcolo_csv = os.path.join(csv_folder, f"{cfcolo}-FD.csv")
+    cfcolo_csv = os.path.join(csv_folder, f"{cfcolo}.csv")
     shutil.copy(result_file, cfcolo_csv)
     logging.info(f"已将 {result_file} 复制为 {cfcolo_csv}")
-
+    
     open(result_file, "w").close()
     logging.info(f"已清空 {result_file} 文件。")
 
 def update_to_github():
-    """提交变更到GitHub"""
+    """检测变更并提交到 GitHub"""
     try:
-        logging.info("正在提交变更到GitHub...")
+        logging.info("变更已提交到GitHub")
         subprocess.run(["git", "add", "."], check=True)
-        commit_message = f"cfst: Update on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        commit_message = f"cfst: Update fd.txt on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         subprocess.run(["git", "commit", "-m", commit_message], check=True)
         subprocess.run(["git", "push", "-f", "origin", "main"], check=True)
-        print("变更已提交到 GitHub。")
+        print("变更已提交到GitHub。")
     except subprocess.CalledProcessError as e:
         logging.error(f"提交 GitHub 失败: {e}")
         print(f"提交 GitHub 失败: {e}")
 
 def get_ping_mode():
-    """交互式选择 ping 模式，5 秒无操作默认使用 HTTPing"""
-    print("请选择 CloudflareSpeedTest 运行模式:")
-    print("1. TCPing（无参数）")
-    print("2. HTTPing (-httping，默认)") 
-    print("（5 秒内未选择将默认使用 HTTPing）")  # 修改提示信息
+    """交互式选择 ping 模式（美化版）"""
+    print(f"{COLOR_BOLD}{COLOR_YELLOW}▶ 请选择测速模式:{COLOR_RESET}")
+    print(f"{COLOR_GREEN} 1{COLOR_RESET}) {COLOR_CYAN}HTTPing{COLOR_RESET} (推荐测试网站响应)")
+    print(f"{COLOR_GREEN} 2{COLOR_RESET}) {COLOR_CYAN}TCPing{COLOR_RESET} (仅测试TCP握手)")
+    print(f"{COLOR_YELLOW}⏳ 5秒内未选择将自动使用 HTTPing{COLOR_RESET}")
 
     try:
         user_input = input_with_timeout(5)
-        if user_input == "1":
-            return ""   # 选择 TCPing 时不加参数
+        if user_input == "2":
+            print(f"{COLOR_GREEN}✓ 已选择 TCPing 模式{COLOR_RESET}")
+            return ""
         else:
-            return "-httping"  # 默认返回 -httping
+            print(f"{COLOR_GREEN}✓ 已选择 HTTPing 模式{COLOR_RESET}")
+            return "-httping"
     except TimeoutError:
-        print("超时，默认使用 HTTPing")
-        return "-httping"  # 超时返回 -httping
+        print(f"{COLOR_RED}⏰ 选择超时，默认使用 HTTPing{COLOR_RESET}")
+        return "-httping"
 
 def input_with_timeout(timeout):
     """等待用户输入，超时返回 None"""
@@ -261,10 +260,105 @@ def is_running_in_github_actions():
     """检测是否在 GitHub Actions 环境中运行"""
     return os.getenv("GITHUB_ACTIONS") == "true"
 
+def get_test_mode():
+    """交互式选择测试模式（美化版）"""
+    print(f"\n{COLOR_BOLD}{COLOR_YELLOW}▶ 请选择测试模式:{COLOR_RESET}")
+    print(f"{COLOR_GREEN}1{COLOR_RESET}) {COLOR_CYAN}批量测试（所有区域）{COLOR_RESET}")
+    print(f"{COLOR_GREEN}2{COLOR_RESET}) {COLOR_CYAN}逐个测试（分区域）{COLOR_RESET}")
+    print(f"{COLOR_YELLOW}⏳ 5秒内未选择将自动使用批量测试模式{COLOR_RESET}")
+
+    try:
+        user_input = input_with_timeout(5)
+        if user_input == "2":
+            print(f"{COLOR_GREEN}✓ 已选择逐个测试模式{COLOR_RESET}")
+            return 2
+        print(f"{COLOR_GREEN}✓ 已选择批量测试模式(强制使用HTTPing){COLOR_RESET}")
+        return 1
+    except TimeoutError:
+        print(f"{COLOR_RED}⏰ 选择超时，默认使用批量测试模式(强制使用HTTPing){COLOR_RESET}")
+        return 1
+
+def process_results_mode1(result_file, output_txt, port_txt, output_cf_txt, random_port):
+    """处理批量模式测试结果"""
+    ip_addresses, download_speeds, latencies, colos = read_csv_mode1(result_file)
+    if not ip_addresses:
+        return
+
+    # 写入基础IP信息
+    for ip, colo in zip(ip_addresses, colos):
+        emoji_flag, country_code = colo_emojis.get(colo, ('🌐', 'XX'))
+        write_to_file(output_txt, [f"{ip}{emoji_flag}{country_code}"], "a")
+
+    # 写入端口信息
+    port_entries = [
+        f"{ip}:{random_port}{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃{latency}ms"
+        for ip, latency, colo in zip(ip_addresses, latencies, colos)
+    ]
+    write_to_file(port_txt, port_entries, "a")
+
+    # 筛选高速IP（>10MB/s）
+    fast_ips = [
+        f"{ip}:{random_port}{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃⚡{speed}MB/s"
+        for ip, speed, colo in zip(ip_addresses, download_speeds, colos)
+        if float(speed) > 10
+    ]
+    if fast_ips:
+        write_to_file(output_cf_txt, fast_ips, "a")
+        logging.info(f"高速IP已写入 {output_cf_txt}")
+    
+    # 归档结果文件
+    csv_folder = "csv/fd"
+    os.makedirs(csv_folder, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    shutil.copy(result_file, os.path.join(csv_folder, f"fd_{timestamp}.csv"))
+    open(result_file, "w").close()
+
+def read_csv_mode1(file_path):
+    """读取批量模式CSV文件并排序（按地区码分组，同组按延迟排序）"""
+    with open(file_path, "r", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        try:
+            header = next(reader)
+        except StopIteration:
+            return [], [], [], []
+        
+        col_index = {col: idx for idx, col in enumerate(header)}
+        required = ["IP 地址", "下载速度 (MB/s)", "平均延迟", "地区码(Colo)"]
+        for col in required:
+            if col not in col_index:
+                logging.error(f"缺少必要列：{col}")
+                sys.exit(1)
+
+        combined = []
+        for row in reader:
+            try:
+                ip = row[col_index["IP 地址"]]
+                speed = row[col_index["下载速度 (MB/s)"]]
+                latency_str = row[col_index["平均延迟"]].replace('ms', '').strip()
+                latency = float(latency_str)
+                colo = row[col_index["地区码(Colo)"]]
+                combined.append( (colo, latency, ip, speed) )
+            except (ValueError, IndexError) as e:
+                logging.warning(f"跳过无效行：{row}，错误：{e}")
+                continue
+        
+        # 按地区码排序，同地区按延迟升序排列
+        sorted_combined = sorted(combined, key=lambda x: (x[0], x[1]))
+        
+        colos = [item[0] for item in sorted_combined]
+        latencies = [item[1] for item in sorted_combined]
+        ips = [item[2] for item in sorted_combined]
+        speeds = [item[3] for item in sorted_combined]
+        
+        return ips, speeds, latencies, colos
+
 def main():
     """主函数"""
-    try:    
-        # 删除旧的日志文件
+    print_banner()
+    print(f"{COLOR_BOLD}{COLOR_GREEN}🚀 开始执行 Cloudflare 优选IP自动化脚本{COLOR_RESET}\n")
+    
+    try:
+        # 清理旧日志文件
         old_logs = glob.glob('logs/cfstfd_*.log')
         for old_log in old_logs:
             try:
@@ -272,12 +366,25 @@ def main():
                 print(f"已删除旧日志文件: {old_log}")
             except Exception as e:
                 print(f"删除旧日志文件 {old_log} 时出错: {e}")
-                logging.error(f"删除旧日志文件 {old_log} 时出错: {e}")
 
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = f'logs/cfstfd_{current_time}.log'
         setup_logging(log_file)
         setup_environment()
+
+        # 清理旧CSV文件
+        logging.info("清理旧CSV文件...")
+        csv_patterns = [
+            os.path.join("csv", "fd", "*.csv"),
+            os.path.join("csv", "result.csv")
+        ]
+        for pattern in csv_patterns:
+            for file_path in glob.glob(pattern):
+                try:
+                    os.remove(file_path)
+                    logging.info(f"已删除旧CSV文件：{file_path}")
+                except Exception as e:
+                    logging.error(f"删除旧CSV文件 {file_path} 失败：{e}")
 
         result_file = "csv/resultfd.csv"
         cfip_file = "cfip/fd.txt"
@@ -292,29 +399,21 @@ def main():
 
         system_arch = platform.machine().lower()
         if system_arch in ["x86_64", "amd64"]:
-            download_url = "https://github.com/XIU2/CloudflareSpeedTest/releases/download/v2.2.5/CloudflareST_linux_amd64.tar.gz"
             cfst_path = "amd64/cfst"
         elif system_arch in ["aarch64", "arm64"]:
-            download_url = "https://github.com/XIU2/CloudflareSpeedTest/releases/download/v2.2.5/CloudflareST_linux_arm64.tar.gz"
             cfst_path = "arm64/cfst"
         elif system_arch in ["armv7l", "armv6l"]:
-            download_url = "https://github.com/XIU2/CloudflareSpeedTest/releases/download/v2.2.5/CloudflareST_linux_armv7.tar.gz"
             cfst_path = "armv7/cfst"
         else:
             logging.error(f"不支持的架构: {system_arch}")
             sys.exit(1)
 
-        logging.info(f"检测到系统架构为 {system_arch}，将下载对应的 CloudflareST 版本: {download_url}")
+        # execute_git_pull()
 
-        #execute_git_pull()
-
-        if not os.path.exists(cfst_path):
-            download_and_extract(download_url, cfst_path)
+        # 获取测试模式
+        test_mode = get_test_mode()
         
-        # 让用户选择 TCPing 或 HTTPing 模式
-        ping_mode = get_ping_mode()
-
-        cfcolo_list = ["HKG", "SJC", "LAX", "SEA" , "NRT", "SIN", "FRA"]
+        cfcolo_list = ["HKG", "SJC", "LAX", "SEA", "NRT", "SIN", "FRA"]
         cf_ports = [443]
 
         # 处理命令行参数
@@ -329,29 +428,92 @@ def main():
         else:
             logging.info(f"使用默认区域列表: {cfcolo_list}")
 
-        for cfcolo in cfcolo_list:
+        # 模式设置
+        if test_mode == 1:
+            ping_mode = "-httping"  # 批量模式强制使用HTTPing
+            dn = 10
+            p = 10
+            logging.info(f"批量测试模式启用，参数设置为 dn={dn}, p={p}")
+        else:
+            ping_mode = get_ping_mode()
+            dn = 3
+            p = 3
+        
+        # 执行测试
+        if test_mode == 1:
+            # 批量模式
             random_port = random.choice(cf_ports)
-            execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode)
-            process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_txt, random_port)
+            execute_cfst_test(
+                cfst_path, 
+                ",".join(cfcolo_list), 
+                result_file, 
+                random_port, 
+                ping_mode,
+                dn=dn,
+                p=p
+            )
+            process_results_mode1(
+                result_file, 
+                output_txt, 
+                port_txt, 
+                output_cf_txt, 
+                random_port
+            )
+        else:
+            # 逐个测试模式
+            for idx, cfcolo in enumerate(cfcolo_list, 1):
+                emoji_data = colo_emojis.get(cfcolo, ['🌐', cfcolo])
+                print(f"\n{COLOR_BOLD}{COLOR_YELLOW}🔧 正在处理区域 ({idx}/{len(cfcolo_list)})：{emoji_data[0]} {cfcolo}{COLOR_RESET}")
+                random_port = random.choice(cf_ports)
+                execute_cfst_test(
+                    cfst_path, 
+                    cfcolo, 
+                    result_file, 
+                    random_port, 
+                    ping_mode,
+                    dn=dn,
+                    p=p
+                )
+                process_test_results(
+                    cfcolo, 
+                    result_file, 
+                    output_txt, 
+                    port_txt, 
+                    output_cf_txt, 
+                    random_port
+                )
+                # 询问是否退出（非 GitHub 环境）
+                if not is_running_in_github_actions():
+                    print(f"\n{COLOR_BOLD}{COLOR_YELLOW}▶ 是否退出执行？({COLOR_GREEN}Y{COLOR_YELLOW}/n) [5秒后自动继续]{COLOR_RESET}")
+                    try:
+                        user_input = input_with_timeout(5).strip().lower()
+                        if user_input == 'y':
+                            print(f"{COLOR_GREEN}✓ 用户选择退出，终止测试。{COLOR_RESET}")
+                            break
+                    except TimeoutError:
+                        print(f"{COLOR_YELLOW}⏳ 超时未响应，自动继续。{COLOR_RESET}")
 
-        # 调用 checker.py 并传递 cfip_file
-        logging.info("正在调用 checker.py 检查 IP 列表...")
-        try:
-            subprocess.run([sys.executable, "checker.py", cfip_file], check=True)
-            logging.info("checker.py 执行完成。")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"执行 checker.py 失败: {e}")
-            sys.exit(1)
-
+            # 调用 checker.py 并传递 cfip_file
+            logging.info("正在调用 checker.py 检查 IP 列表...")
+            try:
+                subprocess.run([sys.executable, "checker.py", cfip_file], check=True)
+                logging.info("checker.py 执行完成。")
+            except subprocess.CalledProcessError as e:
+                logging.error(f"执行 checker.py 失败: {e}")
+                sys.exit(1)
+        
         # 检测是否在 GitHub Actions 环境中运行
         if is_running_in_github_actions():
             logging.info("正在 GitHub Actions 环境中运行，跳过提交代码到github")
         else:    
-            logging.info("脚本执行完成。")
+            # 在最终提交时添加提示
+            print(f"\n{COLOR_BOLD}{COLOR_GREEN}✅ 所有测试已完成！{COLOR_RESET}")
+            print(f"{COLOR_CYAN}📤 正在提交结果到 GitHub...{COLOR_RESET}")
             update_to_github()
     
-    except Exception as e:
-        logging.exception("脚本执行过程中发生未捕获的异常:")
+    except Exception as e:  # 新增的异常捕获块
+        print(f"\n{COLOR_BOLD}{COLOR_RED}💥 脚本执行遇到错误：{str(e)}{COLOR_RESET}")
+        logging.exception("未捕获的异常:")
         sys.exit(1)
 
 if __name__ == "__main__":
