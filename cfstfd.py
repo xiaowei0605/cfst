@@ -30,6 +30,10 @@ COLOR_CYAN = "\033[36m"
 COLOR_BOLD = "\033[1m"
 COLOR_BLINK = "\033[5m"
 
+# ------------------------------
+# 工具函数
+# ------------------------------
+
 def print_banner():
     """打印彩色横幅"""
     banner = rf"""
@@ -116,208 +120,6 @@ def read_csv(file_path):
         
         return ip_addresses, download_speeds, latencies
 
-def execute_git_pull():
-    """执行 git pull 操作"""
-    try:
-        logging.info("正在执行 git pull...")
-        subprocess.run(["git", "pull"], check=True)
-        logging.info("git pull 成功，本地仓库已更新。")
-    except subprocess.CalledProcessError as e:
-        logging.error(f"git pull 失败: {e}")
-        sys.exit(1)
-
-def execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode, dn=3, p=3):
-    """执行 CloudflareSpeedTest 测试"""
-    logging.info(f"正在测试区域: {cfcolo}，模式: {'HTTPing' if ping_mode == '-httping' else 'TCPing'}")
-
-    command = [
-        f"./{cfst_path}",
-        "-f", "proxy.txt",
-        "-o", result_file,
-        "-url", "https://cloudflare.cdn.openbsd.org/pub/OpenBSD/7.3/src.tar.gz",
-        "-cfcolo", cfcolo,
-        "-tl", "200",
-        "-tll", "5",
-        "-tlr", "0.2",
-        "-tp", str(random_port),
-        "-dn", str(dn),
-        "-p", str(p)
-    ]
-
-    if ping_mode:  # 只有在选择 HTTPing 时才加 `-httping`
-        command.append(ping_mode)
-
-    try:
-        subprocess.run(command, check=True)
-    except subprocess.CalledProcessError as e:
-        logging.error(f"CloudflareSpeedTest 测试失败: {e}")
-        sys.exit(1)
-    
-    if not os.path.exists(result_file):
-        logging.warning(f"未生成 {result_file} 文件，正在新建一个空的 {result_file} 文件。")
-        with open(result_file, "w") as file:
-            file.write("")
-        logging.info(f"已新建 {result_file} 文件。")
-    else:
-        logging.info(f"{result_file} 文件已存在，无需新建。")
-
-def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_txt, random_port):
-    # 获取国旗emoji和国家代码
-    emoji_data = colo_emojis.get(cfcolo, ['🌐', cfcolo])
-    emoji_flag = emoji_data[0]
-    country_code = emoji_data[1]
-    identifier = f"{emoji_flag}{country_code}"
-
-    # 添加彩色处理状态提示
-    print(f"\n{COLOR_BOLD}{COLOR_CYAN}🔍 正在处理 [{emoji_flag} {cfcolo}] 的测试结果...{COLOR_RESET}")
-
-    # 清理旧记录
-    for file_path in [output_txt, port_txt]:
-        removed = remove_entries_by_identifier(file_path, identifier)
-        if removed > 0:
-            print(f"{COLOR_GREEN}✓ 已清理 {cfcolo} 在 {file_path} 中的 {removed} 条旧记录{COLOR_RESET}")
-    
-    # 处理CSV结果
-    ip_addresses, download_speeds, latencies = read_csv(result_file)
-    if not ip_addresses:
-        return
-
-    # 按平均延迟排序（升序）
-    combined = list(zip(ip_addresses, download_speeds, latencies))
-    combined.sort(key=lambda x: float(x[2].replace('ms', '').strip()))
-    
-    # 写入基础IP信息
-    write_to_file(output_txt, [f"{ip}#{identifier}" for ip, _, _ in combined])
-
-    # 写入端口信息
-    port_entries = [
-        f"{ip}:{random_port}#{identifier}┃{latency}ms"
-        for ip, _, latency in combined
-    ]
-    write_to_file(port_txt, port_entries)
-
-    # 筛选并写入高速IP（下载速度 > 10MB/s）
-    fast_ips = [
-        f"{ip}:{random_port}#{identifier}┃⚡{speed}MB/s"
-        for ip, speed, _ in combined
-        if float(speed) > 10
-    ]
-    if fast_ips:
-        write_to_file(output_cf_txt, fast_ips)
-        logging.info(f"筛选下载速度大于 10 MB/s 的 IP 已追加到 {output_cf_txt}")
-    else:
-        logging.info(f"区域 {cfcolo} 未找到下载速度大于 10 MB/s 的 IP，跳过写入操作。")
-
-    # 确保 csv 文件夹存在
-    csv_folder = "csv/fd"
-    os.makedirs(csv_folder, exist_ok=True)
-    
-    # 在清空 result_file 前，先复制文件到指定路径
-    cfcolo_csv = os.path.join(csv_folder, f"{cfcolo}.csv")
-    shutil.copy(result_file, cfcolo_csv)
-    logging.info(f"已将 {result_file} 复制为 {cfcolo_csv}")
-    
-    open(result_file, "w").close()
-    logging.info(f"已清空 {result_file} 文件。")
-
-def update_to_github():
-    """检测变更并提交到 GitHub"""
-    try:
-        logging.info("变更已提交到GitHub")
-        subprocess.run(["git", "add", "."], check=True)
-        commit_message = f"cfst: Update fd.txt on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        subprocess.run(["git", "commit", "-m", commit_message], check=True)
-        subprocess.run(["git", "push", "-f", "origin", "main"], check=True)
-        print("变更已提交到GitHub。")
-    except subprocess.CalledProcessError as e:
-        logging.error(f"提交 GitHub 失败: {e}")
-        print(f"提交 GitHub 失败: {e}")
-
-def get_ping_mode():
-    """交互式选择 ping 模式（美化版）"""
-    print(f"{COLOR_BOLD}{COLOR_YELLOW}▶ 请选择测速模式:{COLOR_RESET}")
-    print(f"{COLOR_GREEN} 1{COLOR_RESET}) {COLOR_CYAN}HTTPing{COLOR_RESET} (推荐测试网站响应)")
-    print(f"{COLOR_GREEN} 2{COLOR_RESET}) {COLOR_CYAN}TCPing{COLOR_RESET} (仅测试TCP握手)")
-    print(f"{COLOR_YELLOW}⏳ 5秒内未选择将自动使用 HTTPing{COLOR_RESET}")
-
-    try:
-        user_input = input_with_timeout(5)
-        if user_input == "2":
-            print(f"{COLOR_GREEN}✓ 已选择 TCPing 模式{COLOR_RESET}")
-            return ""
-        else:
-            print(f"{COLOR_GREEN}✓ 已选择 HTTPing 模式{COLOR_RESET}")
-            return "-httping"
-    except TimeoutError:
-        print(f"{COLOR_RED}⏰ 选择超时，默认使用 HTTPing{COLOR_RESET}")
-        return "-httping"
-
-def input_with_timeout(timeout):
-    """等待用户输入，超时返回 None"""
-    import select
-    rlist, _, _ = select.select([sys.stdin], [], [], timeout)
-    if rlist:
-        return sys.stdin.readline().strip()
-    else:
-        raise TimeoutError
-
-def is_running_in_github_actions():
-    """检测是否在 GitHub Actions 环境中运行"""
-    return os.getenv("GITHUB_ACTIONS") == "true"
-
-def get_test_mode():
-    """交互式选择测试模式（美化版）"""
-    print(f"\n{COLOR_BOLD}{COLOR_YELLOW}▶ 请选择测试模式:{COLOR_RESET}")
-    print(f"{COLOR_GREEN}1{COLOR_RESET}) {COLOR_CYAN}批量测试（所有区域）{COLOR_RESET}")
-    print(f"{COLOR_GREEN}2{COLOR_RESET}) {COLOR_CYAN}逐个测试（分区域）{COLOR_RESET}")
-    print(f"{COLOR_YELLOW}⏳ 5秒内未选择将自动使用逐个测试模式{COLOR_RESET}")  # 修改提示信息
-
-    try:
-        user_input = input_with_timeout(5)
-        if user_input == "1":  # 修改判断条件
-            print(f"{COLOR_GREEN}✓ 已选择批量测试模式(强制使用HTTPing){COLOR_RESET}")
-            return 1
-        print(f"{COLOR_GREEN}✓ 已选择逐个测试模式{COLOR_RESET}")  # 修改默认选项
-        return 2
-    except TimeoutError:
-        print(f"{COLOR_RED}⏰ 选择超时，默认使用逐个测试模式{COLOR_RESET}")  # 修改超时默认值
-        return 2
-
-def process_results_mode1(result_file, output_txt, port_txt, output_cf_txt, random_port):
-    """处理批量模式测试结果"""
-    ip_addresses, download_speeds, latencies, colos = read_csv_mode1(result_file)
-    if not ip_addresses:
-        return
-
-    # 写入基础IP信息
-    for ip, colo in zip(ip_addresses, colos):
-        emoji_flag, country_code = colo_emojis.get(colo, ('🌐', 'XX'))
-        write_to_file(output_txt, [f"{ip}#{emoji_flag}{country_code}"], "a")
-
-    # 写入端口信息
-    port_entries = [
-        f"{ip}:{random_port}#{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃{latency}ms"
-        for ip, latency, colo in zip(ip_addresses, latencies, colos)
-    ]
-    write_to_file(port_txt, port_entries, "a")
-
-    # 筛选高速IP（>10MB/s）
-    fast_ips = [
-        f"{ip}:{random_port}#{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃⚡{speed}MB/s"
-        for ip, speed, colo in zip(ip_addresses, download_speeds, colos)
-        if float(speed) > 10
-    ]
-    if fast_ips:
-        write_to_file(output_cf_txt, fast_ips, "a")
-        logging.info(f"高速IP已写入 {output_cf_txt}")
-    
-    # 归档结果文件
-    csv_folder = "csv/fd"
-    os.makedirs(csv_folder, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    shutil.copy(result_file, os.path.join(csv_folder, f"fd_{timestamp}.csv"))
-    open(result_file, "w").close()
-
 def read_csv_mode1(file_path):
     """读取批量模式CSV文件并排序（按地区码分组，同组按延迟排序）"""
     with open(file_path, "r", encoding="utf-8") as f:
@@ -380,6 +182,232 @@ def remove_entries_by_identifier(file_path, identifier):
     
     return removed_count
 
+# ------------------------------
+# 核心测试函数
+# ------------------------------
+
+def execute_git_pull():
+    """执行 git pull 操作"""
+    try:
+        logging.info("正在执行 git pull...")
+        subprocess.run(["git", "pull"], check=True)
+        logging.info("git pull 成功，本地仓库已更新。")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"git pull 失败: {e}")
+        sys.exit(1)
+
+def execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode, dn=3, p=3):
+    """执行 CloudflareSpeedTest 测试"""
+    logging.info(f"正在测试区域: {cfcolo}，模式: {'HTTPing' if ping_mode == '-httping' else 'TCPing'}")
+
+    command = [
+        f"./{cfst_path}",
+        "-f", "proxy.txt",
+        "-o", result_file,
+        "-url", "https://cloudflare.cdn.openbsd.org/pub/OpenBSD/7.3/src.tar.gz",
+        "-cfcolo", cfcolo,
+        "-tl", "200",
+        "-tll", "5",
+        "-tlr", "0.2",
+        "-tp", str(random_port),
+        "-dn", str(dn),
+        "-p", str(p)
+    ]
+
+    if ping_mode:  # 只有在选择 HTTPing 时才加 `-httping`
+        command.append(ping_mode)
+
+    try:
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as e:
+        logging.error(f"CloudflareSpeedTest 测试失败: {e}")
+        sys.exit(1)
+    
+    if not os.path.exists(result_file):
+        logging.warning(f"未生成 {result_file} 文件，正在新建一个空的 {result_file} 文件。")
+        with open(result_file, "w") as file:
+            file.write("")
+        logging.info(f"已新建 {result_file} 文件。")
+    else:
+        logging.info(f"{result_file} 文件已存在，无需新建。")
+
+# ------------------------------
+# 结果处理函数
+# ------------------------------
+
+def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_txt, random_port):
+    # 获取国旗emoji和国家代码
+    emoji_data = colo_emojis.get(cfcolo, ['🌐', cfcolo])
+    emoji_flag = emoji_data[0]
+    country_code = emoji_data[1]
+    identifier = f"{emoji_flag}{country_code}"
+
+    # 添加彩色处理状态提示
+    print(f"\n{COLOR_BOLD}{COLOR_CYAN}🔍 正在处理 [{emoji_flag} {cfcolo}] 的测试结果...{COLOR_RESET}")
+
+    # 清理旧记录
+    for file_path in [output_txt, port_txt]:
+        removed = remove_entries_by_identifier(file_path, identifier)
+        if removed > 0:
+            print(f"{COLOR_GREEN}✓ 已清理 {cfcolo} 在 {file_path} 中的 {removed} 条旧记录{COLOR_RESET}")
+    
+    # 处理CSV结果
+    ip_addresses, download_speeds, latencies = read_csv(result_file)
+    if not ip_addresses:
+        return
+
+    # 按平均延迟排序（升序）
+    combined = list(zip(ip_addresses, download_speeds, latencies))
+    combined.sort(key=lambda x: float(x[2].replace('ms', '').strip()))
+    
+    # 写入基础IP信息
+    write_to_file(output_txt, [f"{ip}#{identifier}" for ip, _, _ in combined])
+
+    # 写入端口信息
+    port_entries = [
+        f"{ip}:{random_port}#{identifier}┃{latency}ms"
+        for ip, _, latency in combined
+    ]
+    write_to_file(port_txt, port_entries)
+
+    # 筛选并写入高速IP（下载速度 > 10MB/s）
+    fast_ips = [
+        f"{ip}:{random_port}#{identifier}┃⚡{speed}MB/s"
+        for ip, speed, _ in combined
+        if float(speed) > 10
+    ]
+    if fast_ips:
+        write_to_file(output_cf_txt, fast_ips)
+        logging.info(f"筛选下载速度大于 10 MB/s 的 IP 已追加到 {output_cf_txt}")
+    else:
+        logging.info(f"区域 {cfcolo} 未找到下载速度大于 10 MB/s 的 IP，跳过写入操作。")
+
+    # 确保 csv 文件夹存在
+    csv_folder = "csv/fd"
+    os.makedirs(csv_folder, exist_ok=True)
+    
+    # 在清空 result_file 前，先复制文件到指定路径
+    cfcolo_csv = os.path.join(csv_folder, f"{cfcolo}.csv")
+    shutil.copy(result_file, cfcolo_csv)
+    logging.info(f"已将 {result_file} 复制为 {cfcolo_csv}")
+    
+    open(result_file, "w").close()
+    logging.info(f"已清空 {result_file} 文件。")
+
+def process_results_mode1(result_file, output_txt, port_txt, output_cf_txt, random_port):
+    """处理批量模式测试结果"""
+    ip_addresses, download_speeds, latencies, colos = read_csv_mode1(result_file)
+    if not ip_addresses:
+        return
+
+    # 写入基础IP信息
+    for ip, colo in zip(ip_addresses, colos):
+        emoji_flag, country_code = colo_emojis.get(colo, ('🌐', 'XX'))
+        write_to_file(output_txt, [f"{ip}#{emoji_flag}{country_code}"], "a")
+
+    # 写入端口信息
+    port_entries = [
+        f"{ip}:{random_port}#{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃{latency}ms"
+        for ip, latency, colo in zip(ip_addresses, latencies, colos)
+    ]
+    write_to_file(port_txt, port_entries, "a")
+
+    # 筛选高速IP（>10MB/s）
+    fast_ips = [
+        f"{ip}:{random_port}#{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃⚡{speed}MB/s"
+        for ip, speed, colo in zip(ip_addresses, download_speeds, colos)
+        if float(speed) > 10
+    ]
+    if fast_ips:
+        write_to_file(output_cf_txt, fast_ips, "a")
+        logging.info(f"高速IP已写入 {output_cf_txt}")
+    
+    # 归档结果文件
+    csv_folder = "csv/fd"
+    os.makedirs(csv_folder, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    shutil.copy(result_file, os.path.join(csv_folder, f"fd_{timestamp}.csv"))
+    open(result_file, "w").close()
+
+# ------------------------------
+# 用户交互函数
+# ------------------------------
+
+def input_with_timeout(timeout):
+    """等待用户输入，超时返回 None"""
+    import select
+    rlist, _, _ = select.select([sys.stdin], [], [], timeout)
+    if rlist:
+        return sys.stdin.readline().strip()
+    else:
+        raise TimeoutError
+
+def get_ping_mode():
+    """交互式选择 ping 模式（美化版）"""
+    print(f"{COLOR_BOLD}{COLOR_YELLOW}▶ 请选择测速模式:{COLOR_RESET}")
+    print(f"{COLOR_GREEN} 1{COLOR_RESET}) {COLOR_CYAN}HTTPing{COLOR_RESET} (推荐测试网站响应)")
+    print(f"{COLOR_GREEN} 2{COLOR_RESET}) {COLOR_CYAN}TCPing{COLOR_RESET} (仅测试TCP握手)")
+    print(f"{COLOR_YELLOW}⏳ 5秒内未选择将自动使用 HTTPing{COLOR_RESET}")
+
+    try:
+        user_input = input_with_timeout(5)
+        if user_input == "2":
+            print(f"{COLOR_GREEN}✓ 已选择 TCPing 模式{COLOR_RESET}")
+            return ""
+        else:
+            print(f"{COLOR_GREEN}✓ 已选择 HTTPing 模式{COLOR_RESET}")
+            return "-httping"
+    except TimeoutError:
+        print(f"{COLOR_RED}⏰ 选择超时，默认使用 HTTPing{COLOR_RESET}")
+        return "-httping"
+
+def get_test_mode():
+    """交互式选择测试模式（美化版）"""
+    print(f"\n{COLOR_BOLD}{COLOR_YELLOW}▶ 请选择测试模式:{COLOR_RESET}")
+    print(f"{COLOR_GREEN}1{COLOR_RESET}) {COLOR_CYAN}批量测试（所有区域）{COLOR_RESET}")
+    print(f"{COLOR_GREEN}2{COLOR_RESET}) {COLOR_CYAN}逐个测试（分区域）{COLOR_RESET}")
+    print(f"{COLOR_YELLOW}⏳ 5秒内未选择将自动使用逐个测试模式{COLOR_RESET}")
+
+    try:
+        user_input = input_with_timeout(5)
+        if user_input == "1":
+            print(f"{COLOR_GREEN}✓ 已选择批量测试模式(强制使用HTTPing){COLOR_RESET}")
+            return 1
+        print(f"{COLOR_GREEN}✓ 已选择逐个测试模式{COLOR_RESET}")
+        return 2
+    except TimeoutError:
+        print(f"{COLOR_RED}⏰ 选择超时，默认使用逐个测试模式{COLOR_RESET}")
+        return 2
+
+# ------------------------------
+# 平台相关函数
+# ------------------------------
+
+def is_running_in_github_actions():
+    """检测是否在 GitHub Actions 环境中运行"""
+    return os.getenv("GITHUB_ACTIONS") == "true"
+
+# ------------------------------
+# GitHub 操作函数
+# ------------------------------
+
+def update_to_github():
+    """检测变更并提交到 GitHub"""
+    try:
+        logging.info("变更已提交到GitHub")
+        subprocess.run(["git", "add", "."], check=True)
+        commit_message = f"cfst: Update ip.txt on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        subprocess.run(["git", "commit", "-m", commit_message], check=True)
+        subprocess.run(["git", "push", "-f", "origin", "main"], check=True)
+        print("变更已提交到GitHub。")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"提交 GitHub 失败: {e}")
+        print(f"提交 GitHub 失败: {e}")
+
+# ------------------------------
+# 主函数
+# ------------------------------
+
 def main():
     """主函数"""
     print_banner()
@@ -387,7 +415,7 @@ def main():
     
     try:
         # 清理旧日志文件
-        old_logs = glob.glob('logs/cfstfd_*.log')
+        old_logs = glob.glob('logs/cfst_*.log')
         for old_log in old_logs:
             try:
                 os.remove(old_log)
@@ -396,14 +424,14 @@ def main():
                 print(f"删除旧日志文件 {old_log} 时出错: {e}")
 
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = f'logs/cfstfd_{current_time}.log'
+        log_file = f'logs/cfst_{current_time}.log'
         setup_logging(log_file)
         setup_environment()
 
         # 清理旧CSV文件
         logging.info("清理旧CSV文件...")
         csv_patterns = [
-            os.path.join("csv", "fd", "*.csv"),
+            os.path.join("csv", "ip", "*.csv"),
             os.path.join("csv", "result.csv")
         ]
         for pattern in csv_patterns:
@@ -414,11 +442,16 @@ def main():
                 except Exception as e:
                     logging.error(f"删除旧CSV文件 {file_path} 失败：{e}")
 
-        result_file = "csv/resultfd.csv"
-        cfip_file = "cfip/fd.txt"
-        output_txt = "cfip/fd.txt"
-        port_txt = "port/fd.txt"
-        output_cf_txt = "speed/fd.txt"
+        result_file = "csv/result.csv"
+        cfip_file = "cfip/ip.txt"
+        output_txt = "cfip/ip.txt"
+        port_txt = "port/ip.txt"
+        output_cf_txt = "speed/ip.txt"
+
+        open(cfip_file, "w").close()
+        logging.info(f"已清空 {cfip_file} 文件。")
+        open(port_txt, "w").close()
+        logging.info(f"已清空 {port_txt} 文件。")
 
         system_arch = platform.machine().lower()
         if system_arch in ["x86_64", "amd64"]:
@@ -451,30 +484,20 @@ def main():
         else:
             logging.info(f"使用默认区域列表: {cfcolo_list}")
 
+        # 模式设置
         if test_mode == 1:
             ping_mode = "-httping"  # 批量模式强制使用HTTPing
-            dn = 10
-            p = 10
+            dn = 20
+            p = 20
             logging.info(f"批量测试模式启用，参数设置为 dn={dn}, p={p}")
         else:
-            ping_mode = get_ping_mode()  # 逐个测试模式允许选择
+            ping_mode = get_ping_mode()
             dn = 3
             p = 3
-                
+        
         # 执行测试
         if test_mode == 1:
-            # 批量模式，先清理所有涉及的colo的条目
-            print(f"{COLOR_BOLD}{COLOR_CYAN}🧹 正在清理旧数据...{COLOR_RESET}")
-            for cfcolo in cfcolo_list:
-                emoji_data = colo_emojis.get(cfcolo, ['🌐', cfcolo])
-                identifier = f"{emoji_data[0]}{emoji_data[1]}"
-                # 需要清理的文件列表
-                target_files = [output_txt, port_txt]
-                for file_path in target_files:
-                    removed = remove_entries_by_identifier(file_path, identifier)
-                    if removed > 0:
-                        print(f"{COLOR_GREEN}✓ 已清理 {cfcolo} 在 {file_path} 中的 {removed} 条旧记录{COLOR_RESET}")
-            # 执行后续测试...
+            # 批量模式
             random_port = random.choice(cf_ports)
             execute_cfst_test(
                 cfst_path, 
