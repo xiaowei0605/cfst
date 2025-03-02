@@ -168,7 +168,8 @@ def main():
             host, code = future_to_host[future]
             try:
                 success, error_msg = future.result()
-               # 修改点2：美化失败日志中的IP显示
+                # 修改点2：美化失败日志中的IP显示
+                ips = ips_cache.get(host, [])  # 获取缓存的IP列表
                 ips_str = '\n  - '.join(ips) if ips else '无IP地址'
                 
                 if success:
@@ -182,6 +183,11 @@ def main():
                         f"  错误原因: {error_msg}"
                     )
                     failed_nodes.append(code)
+            except Exception as e:
+                logging.error(f"处理节点 {host}:{args.port} 时发生异常: {str(e)}")
+                fail_count += 1
+                failed_nodes.append(code)
+                failed_nodes.append(code)
 
     # 显示汇总信息
     logging.info("\n" + "="*40)
