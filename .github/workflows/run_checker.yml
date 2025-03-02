@@ -9,9 +9,11 @@ on:
 jobs:
   run-checkers:
     runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Shanghai  # 设置为你本地的时区
     permissions:
       contents: write
-
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -35,6 +37,12 @@ jobs:
           echo "SESSION_NAME=${{ secrets.SESSION_NAME }}" >> .env
           echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
           echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
+
+      - name: 检查时间
+        run: |
+          echo "UTC 时间: $(date -u)"
+          echo "本地时间（Runner 默认）: $(date)"
+          echo "自定义时区时间: $(TZ=Asia/Shanghai date)"
 
       - name: IP health check and auto-update
         run: python ip_checker.py
