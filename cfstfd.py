@@ -172,7 +172,7 @@ def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_tx
     print(f"\n{COLOR_BOLD}{COLOR_CYAN}🔍 正在处理 [{emoji_flag} {cfcolo}] 的测试结果...{COLOR_RESET}")
 
     # 清理旧记录
-    for file_path in [output_txt, port_txt, output_cf_txt]:
+    for file_path in [output_txt, port_txt]:
         remove_entries_by_identifier(file_path, identifier)
     
     # 处理CSV结果
