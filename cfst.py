@@ -154,7 +154,7 @@ def execute_git_pull():
         logging.error(f"git pull 失败: {e}")
         sys.exit(1)
 
-def execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode):
+def execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode, dn=3, p=3):
     """执行 CloudflareSpeedTest 测试"""
     logging.info(f"正在测试区域: {cfcolo}，模式: {'HTTPing' if ping_mode == '-httping' else 'TCPing'}")
 
@@ -168,8 +168,8 @@ def execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode):
         "-tll", "5",
         "-tlr", "0.2",
         "-tp", str(random_port),
-        "-dn", "3",
-        "-p", "3"
+        "-dn", str(dn),
+        "-p", str(p)
     ]
 
     if ping_mode:  # 只有在选择 HTTPing 时才加 `-httping`
@@ -288,6 +288,85 @@ def is_running_in_github_actions():
     """检测是否在 GitHub Actions 环境中运行"""
     return os.getenv("GITHUB_ACTIONS") == "true"
 
+def get_test_mode():
+    """交互式选择测试模式（美化版）"""
+    print(f"\n{COLOR_BOLD}{COLOR_YELLOW}▶ 请选择测试模式:{COLOR_RESET}")
+    print(f"{COLOR_GREEN}1{COLOR_RESET}) {COLOR_CYAN}批量测试（所有区域）{COLOR_RESET}")
+    print(f"{COLOR_GREEN}2{COLOR_RESET}) {COLOR_CYAN}逐个测试（分区域）{COLOR_RESET}")
+    print(f"{COLOR_YELLOW}⏳ 5秒内未选择将自动使用批量测试模式{COLOR_RESET}")
+
+    try:
+        user_input = input_with_timeout(5)
+        if user_input == "2":
+            print(f"{COLOR_GREEN}✓ 已选择逐个测试模式{COLOR_RESET}")
+            return 2
+        print(f"{COLOR_GREEN}✓ 已选择批量测试模式{COLOR_RESET}")
+        return 1
+    except TimeoutError:
+        print(f"{COLOR_RED}⏰ 选择超时，默认使用批量测试模式{COLOR_RESET}")
+        return 1
+
+def process_results_mode1(result_file, output_txt, port_txt, output_cf_txt, random_port):
+    """处理批量模式测试结果"""
+    ip_addresses, download_speeds, latencies, colos = read_csv_mode1(result_file)
+    if not ip_addresses:
+        return
+
+    # 写入基础IP信息
+    for ip, colo in zip(ip_addresses, colos):
+        emoji_flag, country_code = colo_emojis.get(colo, ('🌐', 'XX'))
+        write_to_file(output_txt, [f"{ip}{emoji_flag}{country_code}"], "a")
+
+    # 写入端口信息
+    port_entries = [
+        f"{ip}:{random_port}{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃{latency}ms"
+        for ip, latency, colo in zip(ip_addresses, latencies, colos)
+    ]
+    write_to_file(port_txt, port_entries, "a")
+
+    # 筛选高速IP（>10MB/s）
+    fast_ips = [
+        f"{ip}:{random_port}{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃⚡{speed}MB/s"
+        for ip, speed, colo in zip(ip_addresses, download_speeds, colos)
+        if float(speed) > 10
+    ]
+    if fast_ips:
+        write_to_file(output_cf_txt, fast_ips, "a")
+        logging.info(f"高速IP已写入 {output_cf_txt}")
+    
+    # 归档结果文件
+    csv_folder = "csv/ip"
+    os.makedirs(csv_folder, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    shutil.copy(result_file, os.path.join(csv_folder, f"all_{timestamp}.csv"))
+    open(result_file, "w").close()
+
+def read_csv_mode1(file_path):
+    """读取批量模式CSV文件"""
+    with open(file_path, "r", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        try:
+            header = next(reader)
+        except StopIteration:
+            return [], [], [], []
+        
+        # 获取列索引
+        col_index = {col: idx for idx, col in enumerate(header)}
+        required = ["IP 地址", "下载速度 (MB/s)", "平均延迟", "地区码(Colo)"]
+        for col in required:
+            if col not in col_index:
+                logging.error(f"缺少必要列：{col}")
+                sys.exit(1)
+
+        # 读取全部数据
+        data = list(reader)
+        return (
+            [row[col_index["IP 地址"]] for row in data],
+            [row[col_index["下载速度 (MB/s)"]] for row in data],
+            [row[col_index["平均延迟"]] for row in data],
+            [row[col_index["地区码(Colo)"]] for row in data]
+        )
+
 def main():
     """主函数（添加横幅和彩色提示）"""
     print_banner()
@@ -336,15 +415,15 @@ def main():
 
         logging.info(f"检测到系统架构为 {system_arch}，将下载对应的 CloudflareST 版本: {download_url}")
 
-        #execute_git_pull()
+        # execute_git_pull()
 
         if not os.path.exists(cfst_path):
             download_and_extract(download_url, cfst_path)
 
-        # 让用户选择 TCPing 或 HTTPing 模式
-        ping_mode = get_ping_mode()
-
-        cfcolo_list = ["HKG", "SJC", "LAX", "SEA" , "NRT", "SIN", "FRA"]
+        # 获取测试模式
+        test_mode = get_test_mode()
+        
+        cfcolo_list = ["HKG", "SJC", "LAX", "SEA", "NRT", "SIN", "FRA"]
         cf_ports = [443]
 
         # 处理命令行参数
@@ -359,23 +438,70 @@ def main():
         else:
             logging.info(f"使用默认区域列表: {cfcolo_list}")
 
-        # 在区域测试循环中添加进度提示
-        for idx, cfcolo in enumerate(cfcolo_list, 1):
-            emoji_data = colo_emojis.get(cfcolo, ['🌐', cfcolo])
-            print(f"\n{COLOR_BOLD}{COLOR_YELLOW}🔧 正在处理区域 ({idx}/{len(cfcolo_list)})：{emoji_data[0]} {cfcolo}{COLOR_RESET}")
+        # 模式设置
+        if test_mode == 1:
+            ping_mode = "-httping"  # 批量模式强制使用HTTPing
+            dn = 50
+            p = 50
+            logging.info("批量测试模式启用，参数设置为 dn=50, p=50")
+        else:
+            ping_mode = get_ping_mode()
+            dn = 3
+            p = 3
+        
+        # 执行测试
+        if test_mode == 1:
+            # 批量模式
             random_port = random.choice(cf_ports)
-            execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode)
-            process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_txt, random_port)
+            execute_cfst_test(
+                cfst_path, 
+                ",".join(cfcolo_list), 
+                result_file, 
+                random_port, 
+                ping_mode,
+                dn=dn,
+                p=p
+            )
+            process_results_mode1(
+                result_file, 
+                output_txt, 
+                port_txt, 
+                output_cf_txt, 
+                random_port
+            )
+        else:
+            # 逐个测试模式
+            for idx, cfcolo in enumerate(cfcolo_list, 1):
+                emoji_data = colo_emojis.get(cfcolo, ['🌐', cfcolo])
+                print(f"\n{COLOR_BOLD}{COLOR_YELLOW}🔧 正在处理区域 ({idx}/{len(cfcolo_list)})：{emoji_data[0]} {cfcolo}{COLOR_RESET}")
+                random_port = random.choice(cf_ports)
+                execute_cfst_test(
+                    cfst_path, 
+                    cfcolo, 
+                    result_file, 
+                    random_port, 
+                    ping_mode,
+                    dn=dn,
+                    p=p
+                )
+                process_test_results(
+                    cfcolo, 
+                    result_file, 
+                    output_txt, 
+                    port_txt, 
+                    output_cf_txt, 
+                    random_port
+                )
 
-        # 调用 checker.py 并传递 cfip_file
-        logging.info("正在调用 checker.py 检查 IP 列表...")
-        try:
-            subprocess.run([sys.executable, "checker.py", cfip_file], check=True)
-            logging.info("checker.py 执行完成。")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"执行 checker.py 失败: {e}")
-            sys.exit(1)
-    
+            # 调用 checker.py 并传递 cfip_file
+            logging.info("正在调用 checker.py 检查 IP 列表...")
+            try:
+                subprocess.run([sys.executable, "checker.py", cfip_file], check=True)
+                logging.info("checker.py 执行完成。")
+            except subprocess.CalledProcessError as e:
+                logging.error(f"执行 checker.py 失败: {e}")
+                sys.exit(1)
+        
         # 检测是否在 GitHub Actions 环境中运行
         if is_running_in_github_actions():
             logging.info("正在 GitHub Actions 环境中运行，跳过提交代码到github")
@@ -385,9 +511,10 @@ def main():
             print(f"{COLOR_CYAN}📤 正在提交结果到 GitHub...{COLOR_RESET}")
             update_to_github()
     
-    except Exception as e:
+    except Exception as e:  # 新增的异常捕获块
         print(f"\n{COLOR_BOLD}{COLOR_RED}💥 脚本执行遇到错误：{str(e)}{COLOR_RESET}")
         logging.exception("未捕获的异常:")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
