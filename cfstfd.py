@@ -356,17 +356,28 @@ def read_csv_mode1(file_path):
         return ips, speeds, latencies, colos
 
 def remove_entries_by_identifier(file_path, identifier):
-    """从指定文件中删除包含特定标识符的所有行"""
+    """从指定文件中删除包含特定标识符的所有行，并记录删除的条目"""
     if not os.path.exists(file_path):
-        return
+        return 0  # 返回删除的行数
     
+    removed_count = 0
+    # 读取所有行
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
     
+    # 写入不包含标识符的行，并记录被删除的行
     with open(file_path, "w", encoding="utf-8") as f:
         for line in lines:
-            if identifier not in line:
+            if identifier in line:
+                # 记录删除的条目
+                entry = line.strip()
+                logging.info(f"从文件 {file_path} 中删除条目: {entry}")
+                print(f"{COLOR_YELLOW}🗑️ 删除旧条目: {entry}{COLOR_RESET}")
+                removed_count += 1
+            else:
                 f.write(line)
+    
+    return removed_count
 
 def main():
     """主函数"""
@@ -424,7 +435,7 @@ def main():
         # 获取测试模式
         test_mode = get_test_mode()
         
-        cfcolo_list = ["HKG", "SIN", "FRA"]
+        cfcolo_list = ["HKG", "SJC", "LAX", "NRT", "SIN", "FRA"]
         cf_ports = [443]
 
         # 处理命令行参数
@@ -441,8 +452,8 @@ def main():
 
         if test_mode == 1:
             ping_mode = "-httping"  # 批量模式强制使用HTTPing
-            dn = 20
-            p = 20
+            dn = 10
+            p = 10
             logging.info(f"批量测试模式启用，参数设置为 dn={dn}, p={p}")
         else:
             ping_mode = get_ping_mode()  # 逐个测试模式允许选择
@@ -451,7 +462,20 @@ def main():
                 
         # 执行测试
         if test_mode == 1:
-            # 批量模式
+            # 批量模式，先清理所有涉及的colo的条目
+            print(f"{COLOR_BOLD}{COLOR_CYAN}🧹 正在清理旧数据...{COLOR_RESET}")
+            for cfcolo in cfcolo_list:
+                emoji_data = colo_emojis.get(cfcolo, ['🌐', cfcolo])
+                identifier = f"{emoji_data[0]}{emoji_data[1]}"
+                # 需要清理的文件列表
+                target_files = [output_txt, port_txt, output_cf_txt]
+                for file_path in target_files:
+                    removed = remove_entries_by_identifier(file_path, identifier)
+                    if removed > 0:
+                        print(f"{COLOR_GREEN}✓ 已清理 {cfcolo} 在 {os.path.basename(file_path)} 中的 {removed} 条旧记录{COLOR_RESET}")
+                    else:
+                        print(f"{COLOR_CYAN}ℹ️ {cfcolo} 在 {os.path.basename(file_path)} 中无旧记录{COLOR_RESET}")
+            # 执行后续测试...
             random_port = random.choice(cf_ports)
             execute_cfst_test(
                 cfst_path, 
