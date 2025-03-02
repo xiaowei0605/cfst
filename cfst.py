@@ -173,12 +173,20 @@ def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_tx
     # 删除 {cfcolo}-IP.csv 文件
     csv_folder = "csv/ip"
     file_to_delete = os.path.join(csv_folder, f"{cfcolo}-IP.csv")
-    # ... [保持原有删除文件逻辑不变] ...
 
     # 处理CSV结果
     ip_addresses, download_speeds, latencies = read_csv(result_file)
     if not ip_addresses:
         return
+
+    # 按平均延迟排序（升序）
+    combined = list(zip(ip_addresses, download_speeds, latencies))
+    # 提取延迟数值并转换为浮点数（处理可能的'ms'后缀）
+    combined.sort(key=lambda x: float(x[2].replace('ms', '').strip()))
+    # 拆分成排序后的列表
+    ip_addresses = [item[0] for item in combined]
+    download_speeds = [item[1] for item in combined]
+    latencies = [item[2] for item in combined]
 
     # 写入基础IP信息（格式：IP#国旗+国家代码）
     write_to_file(output_txt, [f"{ip}#{emoji_flag}{country_code}" for ip in ip_addresses])
@@ -207,10 +215,10 @@ def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_tx
     csv_folder = "csv/ip"
     os.makedirs(csv_folder, exist_ok=True)
     
-    # 在清空 result_file 前，先复制文件到指定路径
-    cfcolo_csv = os.path.join(csv_folder, f"{cfcolo}.csv")
+    # 归档结果文件（以区域命名）
+    cfcolo_csv = os.path.join(csv_folder, f"{cfcolo}-IP.csv")
     shutil.copy(result_file, cfcolo_csv)
-    logging.info(f"已将 {result_file} 复制为 {cfcolo_csv}")
+    logging.info(f"已将 {result_file} 归档为 {cfcolo_csv}")
     
     open(result_file, "w").close()
     logging.info(f"已清空 {result_file} 文件。")
