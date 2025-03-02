@@ -21,6 +21,29 @@ from colo_emojis import colo_emojis
 # 初始化设置
 # ------------------------------
 
+# 在文件开头添加颜色定义
+COLOR_RESET = "\033[0m"
+COLOR_RED = "\033[31m"
+COLOR_GREEN = "\033[32m"
+COLOR_YELLOW = "\033[33m"
+COLOR_CYAN = "\033[36m"
+COLOR_BOLD = "\033[1m"
+COLOR_BLINK = "\033[5m"
+
+def print_banner():
+    """打印彩色横幅"""
+    banner = rf"""
+{COLOR_CYAN}
+   ____ _      __ _       _ __ _____        _   __     ___
+  / ___| | ___/ _| | __ _| / _|___ /  __ _| |_/ /_   / _ \ _ __ ___
+ | |   | |/ / |_| |/ _` | | |_ |_ \ / _` | __| '_ \ | | | | '_ ` _ \
+ | |___|   <|  _| | (_| | |  _|__) | (_| | |_| | | || |_| | | | | | |
+  \____|_|\_\_| |_|\__,_|_|_| |____/ \__,_|\__|_| |_(_)___/|_| |_| |_|
+
+{COLOR_RESET}
+"""
+    print(banner)
+
 def setup_logging(log_file):
     """配置日志，将日志同时输出到控制台和文件"""
     logging.basicConfig(
@@ -168,9 +191,12 @@ def execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode):
 
 def process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_txt, random_port):
     # 获取国旗emoji和国家代码
-    emoji_data = colo_emojis.get(cfcolo, ['☁️', cfcolo])  # 默认值包含emoji和原CFcolo
+    emoji_data = colo_emojis.get(cfcolo, ['🌐', cfcolo])
     emoji_flag = emoji_data[0]
     country_code = emoji_data[1]
+
+    # 添加彩色处理状态提示
+    print(f"\n{COLOR_BOLD}{COLOR_CYAN}🔍 正在处理 [{emoji_flag} {cfcolo}] 的测试结果...{COLOR_RESET}")
 
     # 删除 {cfcolo}-IP.csv 文件
     csv_folder = "csv/ip"
@@ -231,21 +257,23 @@ def update_to_github():
         print(f"提交 GitHub 失败: {e}")
 
 def get_ping_mode():
-    """交互式选择 ping 模式，5 秒无操作默认使用 TCPing"""
-    print("请选择 CloudflareSpeedTest 运行模式:")
-    print("1. TCPing (默认，无参数)")
-    print("2. HTTPing (-httping)")
-    print("（5 秒内未选择将默认使用 TCPing）")
+    """交互式选择 ping 模式（美化版）"""
+    print(f"{COLOR_BOLD}{COLOR_YELLOW}▶ 请选择测速模式:{COLOR_RESET}")
+    print(f"{COLOR_GREEN} 1{COLOR_RESET}) {COLOR_CYAN}HTTPing{COLOR_RESET} (推荐测试网站响应)")
+    print(f"{COLOR_GREEN} 2{COLOR_RESET}) {COLOR_CYAN}TCPing{COLOR_RESET} (仅测试TCP握手)")
+    print(f"{COLOR_YELLOW}⏳ 5秒内未选择将自动使用 HTTPing{COLOR_RESET}")
 
     try:
         user_input = input_with_timeout(5)
         if user_input == "2":
-            return "-httping"  # 仅在选择 2 时添加参数
+            print(f"{COLOR_GREEN}✓ 已选择 TCPing 模式{COLOR_RESET}")
+            return ""
         else:
-            return ""  # 默认使用 tcping，不加参数
+            print(f"{COLOR_GREEN}✓ 已选择 HTTPing 模式{COLOR_RESET}")
+            return "-httping"
     except TimeoutError:
-        print("超时，默认使用 TCPing")
-        return ""  # 默认情况下不加 -httping 参数
+        print(f"{COLOR_RED}⏰ 选择超时，默认使用 HTTPing{COLOR_RESET}")
+        return "-httping"
 
 def input_with_timeout(timeout):
     """等待用户输入，超时返回 None"""
@@ -261,7 +289,10 @@ def is_running_in_github_actions():
     return os.getenv("GITHUB_ACTIONS") == "true"
 
 def main():
-    """主函数"""
+    """主函数（添加横幅和彩色提示）"""
+    print_banner()
+    print(f"{COLOR_BOLD}{COLOR_GREEN}🚀 开始执行 Cloudflare 优选IP自动化脚本{COLOR_RESET}\n")
+    
     try:
         # 删除旧的日志文件
         old_logs = glob.glob('logs/cfst_*.log')
@@ -314,7 +345,7 @@ def main():
         ping_mode = get_ping_mode()
 
         cfcolo_list = ["HKG", "SJC", "LAX", "SEA" , "NRT", "SIN", "FRA"]
-        cf_ports = [443, 2053, 2083, 2087, 2096, 8443]
+        cf_ports = [443]
 
         # 处理命令行参数
         if len(sys.argv) > 1:
@@ -328,7 +359,10 @@ def main():
         else:
             logging.info(f"使用默认区域列表: {cfcolo_list}")
 
-        for cfcolo in cfcolo_list:
+        # 在区域测试循环中添加进度提示
+        for idx, cfcolo in enumerate(cfcolo_list, 1):
+            emoji_data = colo_emojis.get(cfcolo, ['🌐', cfcolo])
+            print(f"\n{COLOR_BOLD}{COLOR_YELLOW}🔧 正在处理区域 ({idx}/{len(cfcolo_list)})：{emoji_data[0]} {cfcolo}{COLOR_RESET}")
             random_port = random.choice(cf_ports)
             execute_cfst_test(cfst_path, cfcolo, result_file, random_port, ping_mode)
             process_test_results(cfcolo, result_file, output_txt, port_txt, output_cf_txt, random_port)
@@ -346,12 +380,14 @@ def main():
         if is_running_in_github_actions():
             logging.info("正在 GitHub Actions 环境中运行，跳过提交代码到github")
         else:    
-            logging.info("脚本执行完成。")
+            # 在最终提交时添加提示
+            print(f"\n{COLOR_BOLD}{COLOR_GREEN}✅ 所有测试已完成！{COLOR_RESET}")
+            print(f"{COLOR_CYAN}📤 正在提交结果到 GitHub...{COLOR_RESET}")
             update_to_github()
-
+    
     except Exception as e:
-        logging.exception("脚本执行过程中发生未捕获的异常:")
-        sys.exit(1)
+        print(f"\n{COLOR_BOLD}{COLOR_RED}💥 脚本执行遇到错误：{str(e)}{COLOR_RESET}")
+        logging.exception("未捕获的异常:")
 
 if __name__ == "__main__":
     main()

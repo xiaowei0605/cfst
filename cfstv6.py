@@ -231,20 +231,20 @@ def update_to_github():
 
 def get_ping_mode():
     """交互式选择 ping 模式，5 秒无操作默认使用 TCPing"""
-    print("请选择 CloudflareSpeedTest 运行模式:")
-    print("1. TCPing (默认，无参数)")
-    print("2. HTTPing (-httping)")
-    print("（5 秒内未选择将默认使用 TCPing）")
+    print("请选择 CloudflareSpeedTest 运行模式（默认HTTPing）:")
+    print("1. HTTPing (-httping)")
+    print("2. TCPing (无参数)")
+    print("（5 秒内未选择将默认使用 HTTPing）")
 
     try:
         user_input = input_with_timeout(5)
-        if user_input == "2":
-            return "-httping"  # 仅在选择 2 时添加参数
+        if user_input == "2":  # 用户选择TCPing
+            return ""  
         else:
-            return ""  # 默认使用 tcping，不加参数
+            return "-httping"  # 默认使用HTTPing
     except TimeoutError:
-        print("超时，默认使用 TCPing")
-        return ""  # 默认情况下不加 -httping 参数
+        print("超时，默认使用 HTTPing")
+        return "-httping"
 
 def input_with_timeout(timeout):
     """等待用户输入，超时返回 None"""

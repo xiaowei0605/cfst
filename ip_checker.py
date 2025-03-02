@@ -44,11 +44,11 @@ def main():
 
     # 代理服务器配置
     proxies: Dict[str, str] = {
-        "proxy.hk.616049.xyz": "HKG",
-        "proxy.us.616049.xyz": "LAX",
-        "proxy.de.616049.xyz": "FRA",
-        "proxy.sg.616049.xyz": "SIN",
-        "proxy.jp.616049.xyz": "NRT"
+        "hk.616049.xyz": "HKG",
+        "us.616049.xyz": "LAX",
+        "de.616049.xyz": "FRA",
+        "sg.616049.xyz": "SIN",
+        "jp.616049.xyz": "NRT"
     }
 
     failed_nodes: List[str] = []
@@ -87,7 +87,7 @@ def main():
         logging.info(f"触发更新: {codes_str}")
         try:
             result = subprocess.run(
-                ['python', 'cfstfd.py', codes_str],
+                ['python', 'cfst.py', codes_str],
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
