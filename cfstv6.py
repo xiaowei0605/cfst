@@ -287,18 +287,18 @@ def process_results_mode1(result_file, output_txt, port_txt, output_cf_txt, rand
     # 写入基础IP信息
     for ip, colo in zip(ip_addresses, colos):
         emoji_flag, country_code = colo_emojis.get(colo, ('🌐', 'XX'))
-        write_to_file(output_txt, [f"{ip}{emoji_flag}{country_code}"], "a")
+        write_to_file(output_txt, [f"{ip}#{emoji_flag}{country_code}"], "a")
 
     # 写入端口信息
     port_entries = [
-        f"[{ip}]:{random_port}{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃{latency}ms"
+        f"[{ip}]:{random_port}#{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃{latency}ms"
         for ip, latency, colo in zip(ip_addresses, latencies, colos)
     ]
     write_to_file(port_txt, port_entries, "a")
 
     # 筛选高速IP（>10MB/s）
     fast_ips = [
-        f"[{ip}]:{random_port}{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃⚡{speed}MB/s"
+        f"[{ip}]:{random_port}#{colo_emojis.get(colo, ('🌐', 'XX'))[0]}{colo_emojis.get(colo, ('🌐', 'XX'))[1]}┃⚡{speed}MB/s"
         for ip, speed, colo in zip(ip_addresses, download_speeds, colos)
         if float(speed) > 10
     ]
@@ -431,8 +431,8 @@ def main():
         # 模式设置
         if test_mode == 1:
             ping_mode = "-httping"  # 批量模式强制使用HTTPing
-            dn = 10
-            p = 10
+            dn = 20
+            p = 20
             logging.info(f"批量测试模式启用，参数设置为 dn={dn}, p={p}")
         else:
             ping_mode = get_ping_mode()
