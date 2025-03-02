@@ -9,6 +9,8 @@ on:
 jobs:
   run-tcip:
     runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Shanghai  # 设置为你本地的时区
     permissions:
       contents: write  # 确保有权限推送代码
 
