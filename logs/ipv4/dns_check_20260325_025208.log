@@ -1,0 +1,24 @@
+2026-03-25 02:52:08,712 - INFO - 启动维护任务 | 协议类型: IPV4
+2026-03-25 02:52:08,712 - INFO - --------------------------------------------------
+2026-03-25 02:52:08,712 - INFO - [hk.616049.xyz (HKG)] 开始处理节点维护
+2026-03-25 02:52:08,742 - DEBUG - DNS解析重试中 hk.616049.xyz: [Errno -2] Name or service not known
+2026-03-25 02:52:09,775 - DEBUG - DNS解析重试中 hk.616049.xyz: [Errno -2] Name or service not known
+2026-03-25 02:52:10,789 - DEBUG - DNS解析重试中 hk.616049.xyz: [Errno -2] Name or service not known
+2026-03-25 02:52:11,790 - WARNING - [hk.616049.xyz (HKG)] ├─ 无有效DNS记录，触发紧急更新
+2026-03-25 03:05:20,887 - ERROR - CFST更新失败: None
+2026-03-25 03:05:20,887 - INFO - --------------------------------------------------
+2026-03-25 03:05:20,887 - INFO - [us.616049.xyz (LAX)] 开始处理节点维护
+2026-03-25 03:05:20,922 - DEBUG - DNS解析重试中 us.616049.xyz: [Errno -2] Name or service not known
+2026-03-25 03:05:21,955 - DEBUG - DNS解析重试中 us.616049.xyz: [Errno -2] Name or service not known
+2026-03-25 03:05:22,994 - DEBUG - DNS解析重试中 us.616049.xyz: [Errno -2] Name or service not known
+2026-03-25 03:05:23,995 - WARNING - [us.616049.xyz (LAX)] ├─ 无有效DNS记录，触发紧急更新
+2026-03-25 03:18:32,912 - ERROR - CFST更新失败: None
+2026-03-25 03:18:32,912 - INFO - --------------------------------------------------
+2026-03-25 03:18:32,912 - INFO - [de.616049.xyz (FRA)] 开始处理节点维护
+2026-03-25 03:18:32,943 - DEBUG - DNS解析重试中 de.616049.xyz: [Errno -2] Name or service not known
+2026-03-25 03:18:33,975 - DEBUG - DNS解析重试中 de.616049.xyz: [Errno -2] Name or service not known
+2026-03-25 03:18:35,032 - DEBUG - DNS解析重试中 de.616049.xyz: [Errno -2] Name or service not known
+2026-03-25 03:18:36,033 - WARNING - [de.616049.xyz (FRA)] ├─ 无有效DNS记录，触发紧急更新
+2026-03-25 03:31:44,483 - ERROR - CFST更新失败: None
+2026-03-25 03:31:44,486 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2026-03-25 03:31:44,918 - DEBUG - https://api.telegram.org:443 "POST /bot/sendMessage HTTP/1.1" 404 55
