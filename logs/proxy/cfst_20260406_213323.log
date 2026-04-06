@@ -1,4 +1,0 @@
-2026-04-06 21:33:23,588 - root - INFO - [1m启动 PROXY 测试[0m
-2026-04-06 21:33:24,110 - root - INFO - [96m正在测试 AMS (端口: 443)...[0m
-2026-04-06 21:33:32,845 - root - WARNING - [93m结果文件为空，删除: /home/runner/work/cfst/cfst/results/proxy/AMS_20260406-213324.csv[0m
-2026-04-06 21:33:33,394 - root - INFO - [96m=== 测试流程结束 ===[0m
