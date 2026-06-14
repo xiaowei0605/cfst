@@ -1,0 +1,52 @@
+2026-06-15 07:38:23,779 - INFO - 启动维护任务 | 协议类型: PROXY
+2026-06-15 07:38:23,779 - INFO - --------------------------------------------------
+2026-06-15 07:38:23,779 - INFO - [proxy.hk.616049.xyz (HKG)] 开始处理节点维护
+2026-06-15 07:38:23,785 - DEBUG - DNS解析重试中 proxy.hk.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:38:24,792 - DEBUG - DNS解析重试中 proxy.hk.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:38:25,799 - DEBUG - DNS解析重试中 proxy.hk.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:38:26,801 - WARNING - [proxy.hk.616049.xyz (HKG)] ├─ 无有效DNS记录，触发紧急更新
+2026-06-15 07:38:37,049 - ERROR - CFST更新失败: None
+2026-06-15 07:38:37,049 - INFO - --------------------------------------------------
+2026-06-15 07:38:37,049 - INFO - [proxy.us.616049.xyz (LAX)] 开始处理节点维护
+2026-06-15 07:38:37,057 - DEBUG - DNS解析重试中 proxy.us.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:38:38,064 - DEBUG - DNS解析重试中 proxy.us.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:38:39,072 - DEBUG - DNS解析重试中 proxy.us.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:38:40,073 - WARNING - [proxy.us.616049.xyz (LAX)] ├─ 无有效DNS记录，触发紧急更新
+2026-06-15 07:38:50,305 - ERROR - CFST更新失败: None
+2026-06-15 07:38:50,305 - INFO - --------------------------------------------------
+2026-06-15 07:38:50,305 - INFO - [proxy.de.616049.xyz (FRA)] 开始处理节点维护
+2026-06-15 07:38:50,317 - DEBUG - DNS解析重试中 proxy.de.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:38:51,326 - DEBUG - DNS解析重试中 proxy.de.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:38:52,337 - DEBUG - DNS解析重试中 proxy.de.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:38:53,338 - WARNING - [proxy.de.616049.xyz (FRA)] ├─ 无有效DNS记录，触发紧急更新
+2026-06-15 07:39:03,578 - ERROR - CFST更新失败: None
+2026-06-15 07:39:03,578 - INFO - --------------------------------------------------
+2026-06-15 07:39:03,578 - INFO - [proxy.sg.616049.xyz (SIN)] 开始处理节点维护
+2026-06-15 07:39:03,584 - DEBUG - DNS解析重试中 proxy.sg.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:39:04,598 - DEBUG - DNS解析重试中 proxy.sg.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:39:05,607 - DEBUG - DNS解析重试中 proxy.sg.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:39:06,608 - WARNING - [proxy.sg.616049.xyz (SIN)] ├─ 无有效DNS记录，触发紧急更新
+2026-06-15 07:39:16,856 - ERROR - CFST更新失败: None
+2026-06-15 07:39:16,857 - INFO - --------------------------------------------------
+2026-06-15 07:39:16,857 - INFO - [proxy.jp.616049.xyz (NRT)] 开始处理节点维护
+2026-06-15 07:39:16,863 - DEBUG - DNS解析重试中 proxy.jp.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:39:17,872 - DEBUG - DNS解析重试中 proxy.jp.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:39:18,888 - DEBUG - DNS解析重试中 proxy.jp.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:39:19,889 - WARNING - [proxy.jp.616049.xyz (NRT)] ├─ 无有效DNS记录，触发紧急更新
+2026-06-15 07:39:30,107 - ERROR - CFST更新失败: None
+2026-06-15 07:39:30,107 - INFO - --------------------------------------------------
+2026-06-15 07:39:30,107 - INFO - [proxy.kr.616049.xyz (ICN)] 开始处理节点维护
+2026-06-15 07:39:30,114 - DEBUG - DNS解析重试中 proxy.kr.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:39:31,122 - DEBUG - DNS解析重试中 proxy.kr.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:39:32,148 - DEBUG - DNS解析重试中 proxy.kr.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:39:33,149 - WARNING - [proxy.kr.616049.xyz (ICN)] ├─ 无有效DNS记录，触发紧急更新
+2026-06-15 07:39:43,405 - ERROR - CFST更新失败: None
+2026-06-15 07:39:43,405 - INFO - --------------------------------------------------
+2026-06-15 07:39:43,405 - INFO - [proxy.nl.616049.xyz (AMS)] 开始处理节点维护
+2026-06-15 07:39:43,414 - DEBUG - DNS解析重试中 proxy.nl.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:39:44,429 - DEBUG - DNS解析重试中 proxy.nl.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:39:45,436 - DEBUG - DNS解析重试中 proxy.nl.616049.xyz: [Errno -2] Name or service not known
+2026-06-15 07:39:46,438 - WARNING - [proxy.nl.616049.xyz (AMS)] ├─ 无有效DNS记录，触发紧急更新
+2026-06-15 07:39:56,690 - ERROR - CFST更新失败: None
+2026-06-15 07:39:56,694 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2026-06-15 07:39:57,168 - DEBUG - https://api.telegram.org:443 "POST /bot/sendMessage HTTP/1.1" 404 55
