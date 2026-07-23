@@ -1,0 +1,24 @@
+2026-07-23 09:59:51,652 - INFO - 启动维护任务 | 协议类型: IPV4
+2026-07-23 09:59:51,652 - INFO - --------------------------------------------------
+2026-07-23 09:59:51,652 - INFO - [hk.616049.xyz (HKG)] 开始处理节点维护
+2026-07-23 09:59:51,672 - DEBUG - DNS解析重试中 hk.616049.xyz: [Errno -5] No address associated with hostname
+2026-07-23 09:59:52,888 - DEBUG - DNS解析重试中 hk.616049.xyz: [Errno -5] No address associated with hostname
+2026-07-23 09:59:53,917 - DEBUG - DNS解析重试中 hk.616049.xyz: [Errno -5] No address associated with hostname
+2026-07-23 09:59:54,919 - WARNING - [hk.616049.xyz (HKG)] ├─ 无有效DNS记录，触发紧急更新
+2026-07-23 10:12:35,636 - ERROR - CFST更新失败: None
+2026-07-23 10:12:35,636 - INFO - --------------------------------------------------
+2026-07-23 10:12:35,636 - INFO - [us.616049.xyz (LAX)] 开始处理节点维护
+2026-07-23 10:12:35,665 - DEBUG - DNS解析重试中 us.616049.xyz: [Errno -5] No address associated with hostname
+2026-07-23 10:12:36,691 - DEBUG - DNS解析重试中 us.616049.xyz: [Errno -5] No address associated with hostname
+2026-07-23 10:12:37,724 - DEBUG - DNS解析重试中 us.616049.xyz: [Errno -5] No address associated with hostname
+2026-07-23 10:12:38,725 - WARNING - [us.616049.xyz (LAX)] ├─ 无有效DNS记录，触发紧急更新
+2026-07-23 10:25:13,520 - ERROR - CFST更新失败: None
+2026-07-23 10:25:13,520 - INFO - --------------------------------------------------
+2026-07-23 10:25:13,520 - INFO - [de.616049.xyz (FRA)] 开始处理节点维护
+2026-07-23 10:25:13,552 - DEBUG - DNS解析重试中 de.616049.xyz: [Errno -5] No address associated with hostname
+2026-07-23 10:25:14,592 - DEBUG - DNS解析重试中 de.616049.xyz: [Errno -5] No address associated with hostname
+2026-07-23 10:25:15,624 - DEBUG - DNS解析重试中 de.616049.xyz: [Errno -5] No address associated with hostname
+2026-07-23 10:25:16,625 - WARNING - [de.616049.xyz (FRA)] ├─ 无有效DNS记录，触发紧急更新
+2026-07-23 10:37:52,222 - ERROR - CFST更新失败: None
+2026-07-23 10:37:52,226 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2026-07-23 10:37:52,524 - DEBUG - https://api.telegram.org:443 "POST /bot/sendMessage HTTP/1.1" 404 55
