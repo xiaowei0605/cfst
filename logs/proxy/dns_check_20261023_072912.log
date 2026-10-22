@@ -1,0 +1,52 @@
+2026-10-23 07:29:12,821 - INFO - 启动维护任务 | 协议类型: PROXY
+2026-10-23 07:29:12,821 - INFO - --------------------------------------------------
+2026-10-23 07:29:12,821 - INFO - [proxy.hk.616049.xyz (HKG)] 开始处理节点维护
+2026-10-23 07:29:12,890 - DEBUG - DNS解析重试中 proxy.hk.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:29:13,960 - DEBUG - DNS解析重试中 proxy.hk.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:29:15,029 - DEBUG - DNS解析重试中 proxy.hk.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:29:16,030 - WARNING - [proxy.hk.616049.xyz (HKG)] ├─ 无有效DNS记录，触发紧急更新
+2026-10-23 07:29:25,866 - ERROR - CFST更新失败: None
+2026-10-23 07:29:25,866 - INFO - --------------------------------------------------
+2026-10-23 07:29:25,866 - INFO - [proxy.us.616049.xyz (LAX)] 开始处理节点维护
+2026-10-23 07:29:25,919 - DEBUG - DNS解析重试中 proxy.us.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:29:27,000 - DEBUG - DNS解析重试中 proxy.us.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:29:28,063 - DEBUG - DNS解析重试中 proxy.us.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:29:29,064 - WARNING - [proxy.us.616049.xyz (LAX)] ├─ 无有效DNS记录，触发紧急更新
+2026-10-23 07:29:38,761 - ERROR - CFST更新失败: None
+2026-10-23 07:29:38,761 - INFO - --------------------------------------------------
+2026-10-23 07:29:38,761 - INFO - [proxy.de.616049.xyz (FRA)] 开始处理节点维护
+2026-10-23 07:29:38,837 - DEBUG - DNS解析重试中 proxy.de.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:29:39,904 - DEBUG - DNS解析重试中 proxy.de.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:29:40,982 - DEBUG - DNS解析重试中 proxy.de.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:29:41,984 - WARNING - [proxy.de.616049.xyz (FRA)] ├─ 无有效DNS记录，触发紧急更新
+2026-10-23 07:29:51,718 - ERROR - CFST更新失败: None
+2026-10-23 07:29:51,718 - INFO - --------------------------------------------------
+2026-10-23 07:29:51,718 - INFO - [proxy.sg.616049.xyz (SIN)] 开始处理节点维护
+2026-10-23 07:29:51,778 - DEBUG - DNS解析重试中 proxy.sg.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:29:52,822 - DEBUG - DNS解析重试中 proxy.sg.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:29:53,879 - DEBUG - DNS解析重试中 proxy.sg.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:29:54,881 - WARNING - [proxy.sg.616049.xyz (SIN)] ├─ 无有效DNS记录，触发紧急更新
+2026-10-23 07:30:04,602 - ERROR - CFST更新失败: None
+2026-10-23 07:30:04,602 - INFO - --------------------------------------------------
+2026-10-23 07:30:04,602 - INFO - [proxy.jp.616049.xyz (NRT)] 开始处理节点维护
+2026-10-23 07:30:04,633 - DEBUG - DNS解析重试中 proxy.jp.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:30:05,667 - DEBUG - DNS解析重试中 proxy.jp.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:30:06,719 - DEBUG - DNS解析重试中 proxy.jp.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:30:07,720 - WARNING - [proxy.jp.616049.xyz (NRT)] ├─ 无有效DNS记录，触发紧急更新
+2026-10-23 07:30:17,451 - ERROR - CFST更新失败: None
+2026-10-23 07:30:17,451 - INFO - --------------------------------------------------
+2026-10-23 07:30:17,451 - INFO - [proxy.kr.616049.xyz (ICN)] 开始处理节点维护
+2026-10-23 07:30:17,489 - DEBUG - DNS解析重试中 proxy.kr.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:30:18,530 - DEBUG - DNS解析重试中 proxy.kr.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:30:19,587 - DEBUG - DNS解析重试中 proxy.kr.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:30:20,588 - WARNING - [proxy.kr.616049.xyz (ICN)] ├─ 无有效DNS记录，触发紧急更新
+2026-10-23 07:30:30,285 - ERROR - CFST更新失败: None
+2026-10-23 07:30:30,286 - INFO - --------------------------------------------------
+2026-10-23 07:30:30,286 - INFO - [proxy.nl.616049.xyz (AMS)] 开始处理节点维护
+2026-10-23 07:30:30,338 - DEBUG - DNS解析重试中 proxy.nl.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:30:31,419 - DEBUG - DNS解析重试中 proxy.nl.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:30:32,451 - DEBUG - DNS解析重试中 proxy.nl.616049.xyz: [Errno -5] No address associated with hostname
+2026-10-23 07:30:33,452 - WARNING - [proxy.nl.616049.xyz (AMS)] ├─ 无有效DNS记录，触发紧急更新
+2026-10-23 07:30:43,184 - ERROR - CFST更新失败: None
+2026-10-23 07:30:43,186 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2026-10-23 07:30:43,609 - DEBUG - https://api.telegram.org:443 "POST /bot/sendMessage HTTP/1.1" 404 55
